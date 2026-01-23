@@ -2,198 +2,242 @@
 
 ## Overview
 
-This implementation plan converts the Transformer Sentinel Protocol design into discrete coding tasks. The approach prioritizes the core Thermal Digital Twin engine first, followed by API development, then user interfaces. Each task builds incrementally to ensure the system can be validated at each step.
+This implementation plan converts the Transformer Sentinel Protocol design into discrete coding tasks following the software-based "Operating System" approach. The system treats charging infrastructure as a distributed computing problem with four key layers: Prediction (ML), Optimization (MILP), Communication (OCPP), and Application (Dashboard). Each task builds incrementally to create a complete charging management system.
 
-**Note:** For any AI services required, use GroqAI as the primary provider.
+**Core Technologies:** Python (ML/Optimization), Node.js (OCPP/Communication), React (Frontend), PostgreSQL (Data), Redis (Caching)
 
-**Database:** All components use PostgreSQL for data persistence with proper indexing and ACID compliance.
+**Key Datasets:** ACN-Data from Caltech for ML training, Real-time grid signals via MQTT/API
 
 ## Tasks
 
-- [ ] 1. Set up project structure and core thermal engine
-  - [ ] 1.1 Initialize TypeScript project with Fastify backend structure
-    - Create package.json with dependencies (Fastify, TypeScript, pg, Jest, fast-check)
-    - Set up TypeScript configuration and build scripts
-    - Create directory structure: src/, tests/, config/
-    - Configure PostgreSQL connection and environment variables
-  - [ ] 1.2 Implement thermal calculation engine
-    - Create ThermalEngine class with Top-Oil Temperature model
-    - Implement formula: T_next = T_env + (CurrentLoad × K)
-    - Add validation for IEC 60076-7 thermal limits (110°C threshold)
-    - Include ambient temperature factor integration
-  - [ ] 1.3 Write property-based tests for thermal engine
-    - Test thermal calculations with various load scenarios
-    - Verify temperature never exceeds safety thresholds
-    - Test edge cases: zero load, maximum load, temperature variations
+- [ ] 1. Set up project structure and data pipeline foundation
+  - [ ] 1.1 Initialize multi-language project structure
+    - Create Python package for ML/Optimization: requirements.txt with XGBoost, scikit-learn, PuLP, pandas
+    - Create Node.js package for OCPP/Communication: package.json with ws, mqtt, fastify
+    - Create React package for Frontend: Vite, TypeScript, Tailwind CSS
+    - Set up PostgreSQL database with proper schemas for ACN-Data format
+    - Configure Redis for real-time data caching and message queuing
+  - [ ] 1.2 Implement ACN-Data ingestion pipeline
+    - Download and process Caltech ACN-Data dataset (CSV format)
+    - Create data cleaning pipeline: handle missing values, outliers, time zone conversion
+    - Implement ETL process to load historical charging sessions into PostgreSQL
+    - Add data validation: timestamp consistency, energy/power relationship checks
+    - Create sample synthetic data generator for testing when ACN-Data unavailable
+  - [ ] 1.3 Set up real-time data streaming infrastructure
+    - Configure MQTT broker for grid signal ingestion
+    - Implement WebSocket server for OCPP communication
+    - Create Redis pub/sub channels for inter-service communication
+    - Add data persistence layer: real-time → Redis → PostgreSQL pipeline
+    - Implement basic monitoring and health checks for data streams
 
-- [ ] 2. Database setup and data models
-  - [ ] 2.1 Set up PostgreSQL database schema
-    - Create stations table: id, lat, lng, transformer_rating_kva, current_load
-    - Create bookings table: id, station_id, start_time, end_time, expected_kwh, user_id
-    - Create grid_metrics table: id, station_id, timestamp, temperature, load_percentage
-    - Add indexes for geospatial queries and time-based lookups
-  - [ ] 2.2 Implement database connection and ORM setup
-    - Configure PostgreSQL connection with connection pooling
-    - Create TypeScript interfaces for all data models
-    - Implement basic CRUD operations for each table
-    - Add database migration system
-  - [ ] 2.3 Seed database with initial data
-    - Import EV charging stations from Open Charge Map API
-    - Generate baseline load profiles using UCI Power Dataset patterns
-    - Create mock transformer ratings and initial grid metrics
-    - Add sample bookings for testing
+- [ ] 2. Develop Prediction Layer (Machine Learning Engine)
+  - [ ] 2.1 Implement demand forecasting with XGBoost
+    - Create DemandForecaster class with feature engineering pipeline
+    - Extract time-series features: hour, day_of_week, temperature, price, rolling averages
+    - Train XGBoost model on ACN-Data: predict P(t) for next 24 hours
+    - Implement cross-validation and hyperparameter tuning
+    - Add model persistence and versioning system
+  - [ ] 2.2 Develop user classification with K-Means clustering
+    - Create UserClassifier class for behavioral pattern analysis
+    - Extract user features: avg_arrival_hour, session_duration, frequency, energy_consistency
+    - Implement K-Means clustering: Commuters, Fleet, Occasional users
+    - Add cluster validation metrics and visualization
+    - Create user profile update pipeline for continuous learning
+  - [ ] 2.3 Build LSTM alternative for deep learning forecasting
+    - Implement LSTM neural network using TensorFlow/PyTorch
+    - Create sequence-to-sequence model for multi-step ahead prediction
+    - Compare LSTM vs XGBoost performance on validation set
+    - Add ensemble method combining both approaches
+    - Implement confidence interval estimation for predictions
 
-- [ ] 3. Core API endpoints development
-  - [ ] 3.1 Implement GET /stations/nearby endpoint
-    - Add geospatial query for stations within radius
-    - Calculate current thermal headroom for each station
-    - Sort by "Slot Score" (1/Distance + Heat factor)
-    - Include grid health status (Green/Yellow/Red)
-  - [ ] 3.2 Implement POST /bookings endpoint
-    - Validate booking request against thermal limits
-    - Run shadow simulation: baseload + existing bookings + new request
-    - Return 409 Conflict if projected temperature > 110°C
-    - Suggest alternative stations or reduced charging rates
-    - Save confirmed bookings and update thermal projections
-  - [ ] 3.3 Implement GET /transformer/:id/telemetry endpoint
-    - Stream real-time simulated heat/load data
-    - Include historical temperature curves
-    - Add WebSocket support for live updates
-    - Format data for dashboard visualization
+- [ ] 3. Develop Optimization Layer (Dynamic Load Balancer)
+  - [ ] 3.1 Implement MILP solver for charging schedule optimization
+    - Create DynamicLoadBalancer class using PuLP/Gurobi
+    - Define decision variables: power allocation per EV per time slot
+    - Implement constraints: transformer limits, EV energy requirements, power bounds
+    - Set objective function: minimize peak power draw
+    - Add solver configuration and timeout handling
+  - [ ] 3.2 Develop constraint handling and feasibility checking
+    - Implement constraint validation before optimization
+    - Add infeasibility detection and alternative suggestion logic
+    - Create priority-based scheduling for high-priority EVs
+    - Implement rolling horizon optimization for continuous operation
+    - Add sensitivity analysis for constraint relaxation
+  - [ ] 3.3 Build optimization result processing and scheduling
+    - Create ChargingSchedule data structure for optimization output
+    - Implement schedule validation and consistency checks
+    - Add schedule comparison and performance metrics
+    - Create schedule persistence and retrieval system
+    - Implement schedule update triggers for real-time adaptation
+- [ ] 4. Develop Communication Layer (OCPP Controller)
+  - [ ] 4.1 Implement OCPP 1.6/2.0 protocol handler
+    - Create OCPPController class with WebSocket communication
+    - Implement core OCPP messages: BootNotification, Heartbeat, StatusNotification
+    - Add transaction handling: StartTransaction, StopTransaction, MeterValues
+    - Implement SetChargingProfile command for power limit control
+    - Add OCPP message validation and error handling
+  - [ ] 4.2 Develop charging profile management system
+    - Create ChargingProfile data structure matching OCPP specification
+    - Implement profile generation from MILP optimization results
+    - Add profile validation: power limits, time periods, stack levels
+    - Create profile update and cancellation mechanisms
+    - Implement profile conflict resolution and priority handling
+  - [ ] 4.3 Build real-time charger monitoring and control
+    - Implement charger status monitoring via OCPP StatusNotification
+    - Create real-time power consumption tracking
+    - Add charger fault detection and recovery procedures
+    - Implement emergency stop and safety override mechanisms
+    - Create charger performance analytics and reporting
 
-- [ ] 4. External API integrations
-  - [ ] 4.1 Integrate OpenWeatherMap API
-    - Implement ambient temperature fetching by location
-    - Add 30-minute caching to prevent API rate limiting
-    - Handle API failures with fallback temperature values
-    - Include temperature in thermal calculations
-  - [ ] 4.2 Integrate DistanceMatrix.ai API
-    - Calculate driving distances between user location and stations
-    - Implement batch processing for multiple stations
-    - Add caching for frequently requested routes
-    - Handle API quota limits gracefully
-  - [ ] 4.3 Set up Open Charge Map API integration
-    - Fetch real EV station data for seeding database
-    - Implement periodic updates for station availability
-    - Map station specifications to internal data model
-    - Add fallback to mock_stations.json for offline demos
+- [ ] 5. Develop Application Layer (Fleet Management Dashboard)
+  - [ ] 5.1 Create React-based fleet management interface
+    - Set up Vite + React + TypeScript project structure
+    - Implement real-time dashboard with WebSocket connections
+    - Create system overview: active sessions, grid load, optimization status
+    - Add charger status monitoring with visual indicators
+    - Implement user session management and authentication
+  - [ ] 5.2 Build optimization visualization and control panel
+    - Create demand forecast visualization with confidence intervals
+    - Implement charging schedule timeline view
+    - Add MILP solver status and performance metrics display
+    - Create manual override controls for emergency situations
+    - Implement optimization parameter tuning interface
+  - [ ] 5.3 Develop user notification and mobile app interface
+    - Create push notification service for user alerts
+    - Implement user preference management system
+    - Add charging status updates and completion notifications
+    - Create cost savings and environmental impact reporting
+    - Implement user feedback collection for system improvement
 
-- [ ] 5. React frontend development
-  - [ ] 5.1 Set up React + Vite project structure
-    - Initialize Vite project with TypeScript and Tailwind CSS
-    - Install dependencies: React Router, Zustand, Leaflet, Radix UI
-    - Configure build and development scripts
-    - Set up environment variables for API endpoints
-  - [ ] 5.2 Implement StationMap component
-    - Integrate Leaflet.js with OpenStreetMap tiles
-    - Display charging stations as colored pins (Green/Yellow/Red)
-    - Add clustering for dense station areas
-    - Implement click handlers for station selection
-    - Show real-time grid health status
-  - [ ] 5.3 Create BookingPanel component
-    - Build drawer/modal for booking interface
-    - Add SoC (State of Charge) input slider
-    - Implement time window selection
-    - Show estimated charging duration and cost
-    - Add form validation and error handling
-  - [ ] 5.4 Implement ThermalPreview component
-    - Create sparkline chart showing temperature projection
-    - Display current vs. projected transformer temperature
-    - Add visual indicators for thermal stress levels
-    - Update in real-time based on booking parameters
+- [ ] 6. Integrate external data sources and APIs
+  - [ ] 6.1 Implement weather data integration
+    - Integrate OpenWeatherMap API for temperature data
+    - Add weather impact modeling on charging behavior
+    - Implement weather forecast integration for prediction improvement
+    - Create weather data caching and fallback mechanisms
+    - Add weather-based charging recommendation adjustments
+  - [ ] 6.2 Develop grid utility API integration
+    - Implement utility grid load API connections
+    - Add real-time electricity pricing data integration
+    - Create demand response signal processing
+    - Implement grid stability index calculation
+    - Add utility communication for demand response programs
+  - [ ] 6.3 Build vehicle telematics integration
+    - Implement vehicle API connections for SOC data
+    - Add departure time prediction based on user patterns
+    - Create vehicle capability detection (max power, battery size)
+    - Implement vehicle-to-grid (V2G) capability detection
+    - Add vehicle preference learning and adaptation
 
-- [ ] 6. State management and data flow
-  - [ ] 6.1 Set up Zustand store
-    - Create stores for: stations, bookings, user preferences
-    - Implement actions for API calls and state updates
-    - Add persistence for user settings
-    - Handle loading and error states
-  - [ ] 6.2 Implement API client
-    - Create typed API client with error handling
-    - Add retry logic for failed requests
-    - Implement request caching where appropriate
-    - Add offline support with cached data
+- [ ] 7. Implement comprehensive testing and validation
+  - [ ] 7.1 Develop ML model testing and validation
+    - Create train/validation/test splits for ACN-Data
+    - Implement cross-validation for demand forecasting models
+    - Add A/B testing framework for model comparison
+    - Create model performance monitoring and drift detection
+    - Implement automated model retraining pipeline
+  - [ ] 7.2 Build optimization algorithm testing
+    - Create synthetic test scenarios for MILP solver validation
+    - Implement optimization performance benchmarking
+    - Add constraint violation detection and testing
+    - Create stress testing for high-load scenarios
+    - Implement optimization result validation and consistency checks
+  - [ ] 7.3 Develop end-to-end system integration testing
+    - Create complete workflow testing: Monitor → Predict → Optimize → Execute → Notify
+    - Implement OCPP protocol compliance testing
+    - Add real-time system performance testing
+    - Create failure scenario testing and recovery validation
+    - Implement load testing for concurrent user scenarios
 
-- [ ] 7. Streamlit dashboard development
-  - [ ] 7.1 Create technical dashboard for demo
-    - Set up Streamlit app with real-time data visualization
-    - Display transformer temperature curves over time
-    - Show grid load distribution across stations
-    - Add "Fast-Forward" toggle for 24-hour simulation
-  - [ ] 7.2 Implement monitoring widgets
-    - Create KPI cards for system health metrics
-    - Add alerts for thermal threshold violations
-    - Display booking queue and capacity utilization
-    - Include system performance metrics
+- [ ] 8. Build monitoring, logging, and analytics system
+  - [ ] 8.1 Implement comprehensive system monitoring
+    - Create system health monitoring dashboard
+    - Add performance metrics collection: latency, throughput, accuracy
+    - Implement alerting system for system failures and anomalies
+    - Create log aggregation and analysis system
+    - Add system resource monitoring: CPU, memory, database performance
+  - [ ] 8.2 Develop business intelligence and reporting
+    - Create energy savings and cost reduction reporting
+    - Implement grid impact analysis and visualization
+    - Add user behavior analytics and insights
+    - Create system ROI and performance KPI tracking
+    - Implement regulatory compliance reporting
+  - [ ] 8.3 Build data analytics and insights platform
+    - Create data warehouse for historical analysis
+    - Implement advanced analytics: pattern recognition, anomaly detection
+    - Add predictive maintenance for charging infrastructure
+    - Create optimization performance analysis and improvement suggestions
+    - Implement machine learning model interpretability and explainability
 
-- [ ] 8. Testing and validation
-  - [ ] 8.1 Write comprehensive unit tests
-    - Test all thermal calculation functions
-    - Validate API endpoint responses
-    - Test database operations and migrations
-    - Add integration tests for external APIs
-  - [ ] 8.2 Implement property-based testing
-    - Test thermal engine with random load patterns
-    - Verify booking system prevents overheating
-    - Test edge cases and boundary conditions
-    - Validate system behavior under stress
-  - [ ] 8.3 Add end-to-end testing
-    - Test complete user booking flow
-    - Validate real-time updates between frontend and backend
-    - Test system behavior during API failures
-    - Verify demo scenarios work reliably
-
-- [ ] 9. Performance optimization and deployment
-  - [ ] 9.1 Optimize database queries
-    - Add proper indexing for geospatial and time queries
-    - Implement query optimization for station searches
-    - Add database connection pooling
-    - Monitor and optimize slow queries
-  - [ ] 9.2 Implement caching strategies
+- [ ] 9. Optimize performance and prepare for deployment
+  - [ ] 9.1 Implement system performance optimization
+    - Optimize database queries and indexing for time-series data
     - Add Redis caching for frequently accessed data
-    - Cache API responses with appropriate TTL
-    - Implement client-side caching for static data
-    - Add cache invalidation for real-time updates
-  - [ ] 9.3 Prepare deployment configuration
-    - Set up Docker containers for backend and database
-    - Configure environment variables for production
-    - Add health checks and monitoring
-    - Prepare fallback data for demo reliability
+    - Implement connection pooling and resource management
+    - Create horizontal scaling architecture for high-load scenarios
+    - Add performance profiling and bottleneck identification
+  - [ ] 9.2 Develop deployment and infrastructure automation
+    - Create Docker containers for all system components
+    - Implement Kubernetes deployment configurations
+    - Add CI/CD pipeline for automated testing and deployment
+    - Create infrastructure as code (Terraform/CloudFormation)
+    - Implement blue-green deployment for zero-downtime updates
+  - [ ] 9.3 Build security and compliance framework
+    - Implement authentication and authorization system
+    - Add data encryption for sensitive information
+    - Create audit logging for compliance requirements
+    - Implement API rate limiting and DDoS protection
+    - Add security scanning and vulnerability assessment
 
-- [ ] 10. Demo preparation and polish
-  - [ ] 10.1 Create demo scenarios
-    - Prepare realistic booking scenarios showing thermal conflicts
-    - Set up data that demonstrates grid-aware recommendations
-    - Create "stress test" scenarios for impressive demos
-    - Add mock data for offline presentation capability
-  - [ ] 10.2 Add UI polish and animations
-    - Implement smooth transitions for map interactions
-    - Add loading states and skeleton screens
-    - Create warning toasts for high-stress stations
-    - Add success animations for completed bookings
-  - [ ] 10.3 Final testing and bug fixes
-    - Test all demo scenarios thoroughly
-    - Fix any remaining UI/UX issues
-    - Verify system works without internet connection
-    - Prepare backup plans for technical difficulties
+- [ ] 10. Create demonstration scenarios and system validation
+  - [ ] 10.1 Develop realistic demo scenarios
+    - Create peak demand scenario showing MILP optimization benefits
+    - Implement user behavior simulation with different user types
+    - Add grid stress testing scenarios with demand response activation
+    - Create cost savings demonstration with real electricity pricing
+    - Implement environmental impact visualization
+  - [ ] 10.2 Build system validation and benchmarking
+    - Create baseline comparison without optimization system
+    - Implement performance benchmarking against existing solutions
+    - Add system accuracy validation using historical data
+    - Create user acceptance testing scenarios
+    - Implement system reliability and uptime validation
+  - [ ] 10.3 Prepare production deployment and go-live
+    - Create production environment setup and configuration
+    - Implement data migration from existing systems
+    - Add user training materials and documentation
+    - Create system maintenance and support procedures
+    - Implement gradual rollout and monitoring plan
 
 ## Technical Notes
 
-- **AI Services**: Use GroqAI for any AI-powered features or natural language processing needs
-- **Database**: PostgreSQL is used for better scalability, concurrent access, and ACID compliance
-- **Mapping**: OpenStreetMap + Leaflet for visuals, OSRM for routing
-- **Real-time Updates**: WebSocket connections for live thermal data streaming
-- **Fallback Strategy**: Always maintain mock data files for demo reliability
-- **Performance**: Prioritize deterministic physics calculations over complex AI to ensure demo stability
-- **Data Integrity**: PostgreSQL provides ACID transactions and proper indexing for concurrent operations
-- **Geospatial Queries**: PostGIS extension for efficient location-based station discovery
-- **Time-series Data**: Optimized indexing for thermal metrics and booking time ranges
+- **Machine Learning**: Use XGBoost for fast, accurate demand forecasting with ACN-Data training
+- **Optimization**: PuLP/Gurobi for MILP solving with transformer capacity constraints
+- **Communication**: OCPP 1.6/2.0 protocol for real-time charger control via WebSocket
+- **Data Pipeline**: PostgreSQL for persistence, Redis for real-time caching and pub/sub
+- **Real-time Processing**: MQTT for grid signals, WebSocket for OCPP, Redis pub/sub for coordination
+- **Scalability**: Horizontal scaling with Kubernetes, microservices architecture
+- **Monitoring**: Comprehensive logging, metrics collection, and alerting systems
+- **Security**: Authentication, encryption, audit logging, and compliance frameworks
 
 ## Success Criteria
 
 Each task should be considered complete when:
-1. All code is properly tested with both unit and integration tests
-2. The feature works reliably in isolation and as part of the system
-3. Performance meets the requirements for real-time operation
-4. The implementation includes proper error handling and fallback mechanisms
-5. Documentation is updated to reflect the changes
+1. All code is properly tested with unit, integration, and end-to-end tests
+2. The ML models achieve target accuracy metrics on validation datasets
+3. The MILP optimization consistently finds feasible solutions within time limits
+4. OCPP communication works reliably with real charging hardware
+5. The system handles real-time data streams without data loss
+6. Performance meets requirements for concurrent users and real-time operation
+7. The implementation includes proper error handling and fallback mechanisms
+8. Documentation is comprehensive and system is ready for production deployment
+
+## Key Performance Indicators
+
+- **ML Accuracy**: Demand forecasting MAPE < 15% on test data
+- **Optimization Speed**: MILP solver completes within 30 seconds for 100 EVs
+- **System Latency**: End-to-end response time < 2 seconds for user requests
+- **Reliability**: 99.9% uptime with automatic failover and recovery
+- **Scalability**: Support 1000+ concurrent charging sessions
+- **Cost Savings**: Demonstrate 20%+ reduction in peak demand charges
+- **User Satisfaction**: 90%+ acceptance rate for optimized charging schedules

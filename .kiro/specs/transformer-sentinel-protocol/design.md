@@ -2,451 +2,725 @@
 
 ## Overview
 
-The Transformer Sentinel Protocol is a grid-resilience middleware system that prevents distribution transformer failure through intelligent thermal management of EV charging loads. The system uses deterministic physics-based thermal modeling rather than AI predictions to ensure reliable grid stability assessments.
+The Transformer Sentinel Protocol is a software-based "Operating System" for EV charging infrastructure that treats grid management as a distributed computing problem. The system uses machine learning for demand prediction, optimization algorithms for dynamic load balancing, and real-time communication protocols to prevent transformer overload while maximizing user convenience and infrastructure utilization.
 
-The core innovation is the Thermal Digital Twin - a real-time computational model that simulates transformer temperature based on current load, ambient conditions, and thermal physics according to the IEC 60076-7 standard. This enables proactive thermal capacity management rather than reactive overload protection.
+The core innovation is treating charging infrastructure as a distributed computing system where software makes intelligent decisions based on data. The system implements three key layers: Prediction Layer (ML-based forecasting), Optimization Layer (MILP-based load balancing), and Communication Layer (OCPP protocol control).
 
 ## Architecture
 
-The system follows a microservices architecture with three primary components:
+The system follows a layered software architecture with four primary layers:
 
-### Frontend (React + Vite Web Application)
-- **Purpose**: User-facing interface for station discovery and booking
-- **Technology Stack**: React, Vite, Tailwind CSS, Leaflet.js, Zustand
-- **Key Features**: Interactive map with grid health visualization, booking interface, thermal impact preview
+### Prediction Layer (Machine Learning Engine)
+- **Purpose**: Forecasts 24-hour power demand using historical patterns
+- **Technology Stack**: Python, XGBoost/LSTM, scikit-learn, pandas
+- **Key Features**: Time-series analysis, user classification (K-Means), demand forecasting
 
-### Backend (Fastify API Server)
-- **Purpose**: Core Sentinel Engine with thermal calculations and orchestration
-- **Technology Stack**: Fastify (Node.js), PostgreSQL database
-- **Key Features**: Thermal Digital Twin, booking validation, external API integration
+### Optimization Layer (Dynamic Load Balancer)
+- **Purpose**: Solves Mixed-Integer Linear Programming problems for optimal power distribution
+- **Technology Stack**: Python, PuLP/Gurobi, NumPy
+- **Key Features**: MILP solver, constraint optimization, peak shaving algorithms
 
-### Dashboard (Streamlit Technical Interface)
-- **Purpose**: Real-time monitoring and system administration
-- **Technology Stack**: Streamlit (Python)
-- **Key Features**: Thermal data visualization, system health monitoring, simulation tools
+### Communication Layer (OCPP Controller)
+- **Purpose**: Real-time communication with charging hardware via OCPP 1.6/2.0
+- **Technology Stack**: Node.js, WebSocket, MQTT
+- **Key Features**: SetChargingProfile commands, real-time monitoring, protocol management
+
+### Application Layer (Fleet Management Dashboard)
+- **Purpose**: User interfaces and system monitoring
+- **Technology Stack**: React, Streamlit, PostgreSQL
+- **Key Features**: User notifications, system monitoring, heuristic recommendations
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        UI[React Web App]
-        MAP[Interactive Map]
-        BOOK[Booking Interface]
+    subgraph "Application Layer"
+        DASH[Fleet Management Dashboard]
+        UI[User Mobile App]
+        MONITOR[System Monitor]
     end
     
-    subgraph "Backend Layer"
-        API[Fastify API Server]
-        ENGINE[Thermal Digital Twin]
-        VALID[Booking Validator]
+    subgraph "Prediction Layer"
+        ML[XGBoost/LSTM Engine]
+        CLUSTER[K-Means Classifier]
+        FORECAST[Demand Forecaster]
+    end
+    
+    subgraph "Optimization Layer"
+        MILP[MILP Solver]
+        DLB[Dynamic Load Balancer]
+        SCHEDULE[Schedule Optimizer]
+    end
+    
+    subgraph "Communication Layer"
+        OCPP[OCPP Controller]
+        MQTT[MQTT Broker]
+        WEBSOCKET[WebSocket Server]
     end
     
     subgraph "Data Layer"
         DB[(PostgreSQL Database)]
-        CACHE[Weather Cache]
+        CACHE[Redis Cache]
+        STREAM[Real-time Data Stream]
     end
     
-    subgraph "External APIs"
-        OCM[Open Charge Map]
-        WEATHER[OpenWeatherMap]
-        DISTANCE[DistanceMatrix.ai]
-        OSRM[OSRM Routing]
+    subgraph "External Data Sources"
+        ACN[ACN-Data Dataset]
+        GRID[Grid Load API]
+        WEATHER[Weather API]
+        VEHICLE[Vehicle Telematics]
     end
     
-    subgraph "Monitoring"
-        DASH[Streamlit Dashboard]
-    end
+    DASH --> ML
+    UI --> OCPP
+    MONITOR --> DB
     
-    UI --> API
-    MAP --> API
-    BOOK --> API
+    ML --> CLUSTER
+    ML --> FORECAST
+    FORECAST --> MILP
     
-    API --> ENGINE
-    API --> VALID
-    API --> DB
-    API --> CACHE
+    MILP --> DLB
+    DLB --> SCHEDULE
+    SCHEDULE --> OCPP
     
-    API --> OCM
-    API --> WEATHER
-    API --> DISTANCE
-    MAP --> OSRM
+    OCPP --> MQTT
+    OCPP --> WEBSOCKET
+    MQTT --> DB
     
-    DASH --> DB
-    DASH --> API
+    DB --> CACHE
+    CACHE --> STREAM
     
-    ENGINE --> DB
-    VALID --> DB
+    ACN --> ML
+    GRID --> MILP
+    WEATHER --> FORECAST
+    VEHICLE --> OCPP
 ```
 
 ## Components and Interfaces
 
-### Thermal Digital Twin Engine
+### Prediction Engine (Machine Learning Layer)
 
-The core component implementing the IEC 60076-7 thermal model:
+The core ML component that learns from historical data to predict future demand:
 
-**Key Formula**: 
+**XGBoost Demand Forecaster**:
+```python
+class DemandForecaster:
+    def __init__(self):
+        self.model = XGBRegressor(
+            n_estimators=100,
+            max_depth=6,
+            learning_rate=0.1
+        )
+        
+    def train(self, historical_data: pd.DataFrame):
+        """Train on ACN-Data format: timestamp, duration, energy, temperature, price"""
+        features = self.extract_features(historical_data)
+        self.model.fit(features, historical_data['power_demand'])
+        
+    def predict_24h(self, current_time: datetime) -> np.array:
+        """Predict power demand P(t) for next 24 hours"""
+        future_features = self.generate_future_features(current_time)
+        return self.model.predict(future_features)
+        
+    def extract_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Extract time-series features: hour, day_of_week, temperature, etc."""
+        return pd.DataFrame({
+            'hour': data['timestamp'].dt.hour,
+            'day_of_week': data['timestamp'].dt.dayofweek,
+            'temperature': data['temperature'],
+            'electricity_price': data['price'],
+            'historical_avg': data['power_demand'].rolling(24).mean()
+        })
 ```
-Δθ_TO = Δθ_TO,R × (K^n)
-T_oil = T_ambient + Δθ_TO
+
+**K-Means User Classifier**:
+```python
+class UserClassifier:
+    def __init__(self):
+        self.kmeans = KMeans(n_clusters=3)  # Commuters, Fleet, Occasional
+        
+    def classify_users(self, charging_sessions: pd.DataFrame) -> pd.DataFrame:
+        """Group users by behavior patterns"""
+        features = pd.DataFrame({
+            'avg_arrival_hour': charging_sessions.groupby('user_id')['arrival_time'].dt.hour.mean(),
+            'avg_duration': charging_sessions.groupby('user_id')['duration'].mean(),
+            'weekly_frequency': charging_sessions.groupby('user_id').size() / 52,
+            'energy_consistency': charging_sessions.groupby('user_id')['energy_kwh'].std()
+        })
+        
+        clusters = self.kmeans.fit_predict(features)
+        return pd.DataFrame({
+            'user_id': features.index,
+            'user_type': ['Commuter' if c == 0 else 'Fleet' if c == 1 else 'Occasional' for c in clusters]
+        })
 ```
 
-Where:
-- `Δθ_TO`: Top-oil temperature rise over ambient
-- `Δθ_TO,R`: Rated temperature rise at full load
-- `K`: Load factor (current load / rated load)
-- `n`: Thermal exponent (typically 0.8-1.0)
-- `T_ambient`: Current ambient temperature from weather API
+### Dynamic Load Balancer (Optimization Layer)
+
+MILP-based optimizer that distributes power optimally:
+
+**Interface**:
+```python
+class DynamicLoadBalancer:
+    def __init__(self, transformer_limit_kw: float):
+        self.transformer_limit = transformer_limit_kw
+        self.solver = pulp.PULP_CBC_CMD(msg=0)
+        
+    def optimize_charging_schedule(
+        self, 
+        connected_evs: List[EVSession],
+        predicted_demand: np.array,
+        time_horizon_hours: int = 24
+    ) -> ChargingSchedule:
+        """
+        Solve MILP problem:
+        Minimize: max(total_power_t) for all t
+        Subject to: 
+        - Sum(power_t) <= transformer_limit for all t
+        - Each EV reaches target SOC by departure time
+        - Power constraints per EV
+        """
+        
+        # Decision variables: power allocation per EV per time slot
+        power_vars = {}
+        for ev in connected_evs:
+            for t in range(time_horizon_hours):
+                power_vars[(ev.id, t)] = pulp.LpVariable(
+                    f"power_{ev.id}_{t}", 
+                    lowBound=0, 
+                    upBound=ev.max_power_kw
+                )
+        
+        # Objective: minimize peak power
+        peak_power = pulp.LpVariable("peak_power", lowBound=0)
+        problem = pulp.LpProblem("LoadBalancing", pulp.LpMinimize)
+        problem += peak_power
+        
+        # Constraints
+        for t in range(time_horizon_hours):
+            # Grid constraint
+            total_power_t = sum(power_vars[(ev.id, t)] for ev in connected_evs)
+            problem += total_power_t <= self.transformer_limit
+            problem += total_power_t <= peak_power
+            
+        # EV energy constraints
+        for ev in connected_evs:
+            departure_slot = min(ev.departure_time_hours, time_horizon_hours)
+            total_energy = sum(power_vars[(ev.id, t)] for t in range(departure_slot))
+            problem += total_energy >= ev.required_energy_kwh
+            
+        problem.solve(self.solver)
+        return self.extract_schedule(power_vars, connected_evs)
+```
+
+### OCPP Controller (Communication Layer)
+
+Real-time communication with charging hardware:
 
 **Interface**:
 ```typescript
-interface ThermalEngine {
-  calculateTemperature(
-    currentLoad: number,
-    ratedLoad: number,
-    ambientTemp: number,
-    ratedTempRise: number
-  ): number;
+interface OCPPController {
+  sendChargingProfile(
+    chargerId: string,
+    profile: ChargingProfile
+  ): Promise<OCPPResponse>;
   
-  validateBooking(
-    stationId: string,
-    requestedLoad: number,
-    timeWindow: TimeWindow
-  ): ValidationResult;
+  monitorChargerStatus(
+    chargerId: string
+  ): Observable<ChargerStatus>;
   
-  projectTemperature(
-    stationId: string,
-    futureLoads: LoadProfile[]
-  ): TemperatureProjection;
-}
-```
-
-### Station Discovery Service
-
-Integrates multiple data sources to provide grid-aware station recommendations:
-
-**Interface**:
-```typescript
-interface StationDiscovery {
-  findNearbyStations(
-    location: GeoPoint,
-    radius: number,
-    energyRequirement: number
-  ): Promise<StationRecommendation[]>;
+  handleStartTransaction(
+    chargerId: string,
+    connectorId: number,
+    idTag: string
+  ): Promise<void>;
   
-  calculateSlotScore(
-    station: ChargingStation,
-    userLocation: GeoPoint,
-    thermalCapacity: number
-  ): number;
-}
-```
-
-**Slot Score Algorithm**:
-```
-SlotScore = (1 / distance_km) + (thermal_headroom / max_thermal_capacity)
-```
-
-### Booking Validation System
-
-Ensures thermal constraints are respected during reservation:
-
-**Interface**:
-```typescript
-interface BookingValidator {
-  validateThermalCapacity(
-    booking: BookingRequest
-  ): Promise<ValidationResult>;
-  
-  suggestAlternatives(
-    rejectedBooking: BookingRequest
-  ): Promise<Alternative[]>;
-  
-  reserveThermalCapacity(
-    confirmedBooking: Booking
+  handleStopTransaction(
+    transactionId: number,
+    meterStop: number
   ): Promise<void>;
 }
+
+interface ChargingProfile {
+  chargingProfileId: number;
+  stackLevel: number;
+  chargingProfilePurpose: 'TxDefaultProfile' | 'TxProfile';
+  chargingProfileKind: 'Absolute' | 'Recurring' | 'Relative';
+  chargingSchedule: {
+    duration?: number;
+    startSchedule?: string;
+    chargingRateUnit: 'W' | 'A';
+    chargingSchedulePeriod: Array<{
+      startPeriod: number;
+      limit: number;
+      numberPhases?: number;
+    }>;
+  };
+}
 ```
 
-### External API Integration Layer
+**OCPP Message Flow**:
+```typescript
+class OCPPMessageHandler {
+  async handleOptimizationResult(schedule: ChargingSchedule): Promise<void> {
+    for (const evSchedule of schedule.evSchedules) {
+      const profile: ChargingProfile = {
+        chargingProfileId: evSchedule.profileId,
+        stackLevel: 1,
+        chargingProfilePurpose: 'TxProfile',
+        chargingProfileKind: 'Absolute',
+        chargingSchedule: {
+          chargingRateUnit: 'W',
+          chargingSchedulePeriod: evSchedule.powerLimits.map((limit, index) => ({
+            startPeriod: index * 3600, // 1-hour periods
+            limit: limit * 1000 // Convert kW to W
+          }))
+        }
+      };
+      
+      await this.ocppController.sendChargingProfile(evSchedule.chargerId, profile);
+    }
+  }
+  
+  async notifyUser(userId: string, message: string): Promise<void> {
+    // Send push notification: "Your charging speed is reduced to save the grid, 
+    // but you will still be 100% full by 8:00 AM."
+    await this.pushNotificationService.send(userId, {
+      title: "Smart Charging Active",
+      body: message,
+      type: "grid_optimization"
+    });
+  }
+}
+```
 
-Manages data from multiple external sources with caching and fallback strategies:
+### Fleet Management Dashboard
 
-**Open Charge Map Integration**:
-- Endpoint: `https://api.openchargemap.io/v3/poi/`
-- Data: Station locations, connector types, power ratings
-- Caching: 24 hours for station metadata
+Heuristic search system for optimal recommendations:
 
-**Weather Data Integration**:
-- Endpoint: OpenWeatherMap Current Weather API
-- Data: Ambient temperature for thermal calculations
-- Caching: 30 minutes to minimize API calls
+**Interface**:
+```typescript
+interface FleetManagementDashboard {
+  suggestOptimalArrivalTime(
+    userId: string,
+    preferredTime: DateTime,
+    energyRequired: number
+  ): Promise<ArrivalSuggestion>;
+  
+  recommendNearbyStations(
+    location: GeoPoint,
+    energyRequired: number,
+    timeConstraints: TimeWindow
+  ): Promise<StationRecommendation[]>;
+  
+  getSystemMetrics(): Promise<SystemMetrics>;
+}
 
-**Distance Calculation**:
-- Service: DistanceMatrix.ai API
-- Purpose: Driving distance and time calculations
-- Fallback: Haversine distance formula
+interface ArrivalSuggestion {
+  suggestedTime: DateTime;
+  reasonCode: 'PEAK_AVOIDANCE' | 'COST_OPTIMIZATION' | 'GRID_STABILITY';
+  estimatedSavings: {
+    cost: number;
+    time: number;
+    gridImpact: number;
+  };
+  alternativeOptions: Array<{
+    time: DateTime;
+    tradeoffs: string;
+  }>;
+}
+```
 
 ## Data Models
 
 ### Core Entities
 
-**ChargingStation**:
+**ChargingSession** (ACN-Data Format):
 ```typescript
-interface ChargingStation {
-  id: string;
-  location: GeoPoint;
-  transformerRating: number; // kVA
-  currentLoad: number; // kW
-  ratedTempRise: number; // °C
-  connectorTypes: ConnectorType[];
-  operatorId: string;
-  status: StationStatus;
-}
-```
-
-**Booking**:
-```typescript
-interface Booking {
-  id: string;
-  stationId: string;
+interface ChargingSession {
+  sessionId: string;
   userId: string;
-  startTime: DateTime;
-  endTime: DateTime;
-  expectedEnergyKwh: number;
-  expectedPowerKw: number;
-  thermalReservation: ThermalReservation;
-  status: BookingStatus;
+  stationId: string;
+  timestamp: DateTime; // When plug was inserted
+  connectionDuration: number; // Hours
+  energyDelivered: number; // kWh
+  peakPower: number; // kW
+  temperature: number; // °C (affects battery speed)
+  electricityPrice: number; // $/kWh
+  userType: 'Commuter' | 'Fleet' | 'Occasional';
 }
 ```
 
-**ThermalReservation**:
+**EVSession** (Real-time Active Session):
 ```typescript
-interface ThermalReservation {
-  stationId: string;
-  reservedCapacity: number; // kW
-  projectedTempRise: number; // °C
-  safetyMargin: number; // °C
+interface EVSession {
+  id: string;
+  chargerId: string;
+  connectorId: number;
+  userId: string;
+  currentSOC: number; // %
+  targetSOC: number; // %
+  requiredEnergyKwh: number;
+  maxPowerKw: number;
+  arrivalTime: DateTime;
+  departureTime: DateTime;
+  isFlexible: boolean; // Can accept reduced charging speed
+  priorityLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+```
+
+**ChargingSchedule** (Optimization Output):
+```typescript
+interface ChargingSchedule {
+  scheduleId: string;
+  generatedAt: DateTime;
   validUntil: DateTime;
+  totalPeakReduction: number; // kW
+  evSchedules: Array<{
+    evSessionId: string;
+    chargerId: string;
+    profileId: number;
+    powerLimits: number[]; // kW per hour for next 24 hours
+    estimatedCompletionTime: DateTime;
+    userNotification: string;
+  }>;
+  gridMetrics: {
+    predictedPeakLoad: number;
+    transformerUtilization: number;
+    costSavings: number;
+  };
 }
 ```
 
-**GridMetrics**:
+**GridSignal** (Real-time Grid Data):
 ```typescript
-interface GridMetrics {
-  stationId: string;
+interface GridSignal {
   timestamp: DateTime;
-  currentLoad: number; // kW
-  projectedTemperature: number; // °C
-  ambientTemperature: number; // °C
-  gridHealthStatus: 'GREEN' | 'YELLOW' | 'RED';
-  thermalHeadroom: number; // kW
+  transformerId: string;
+  currentLoadKw: number;
+  capacityLimitKw: number;
+  utilizationPercent: number;
+  priceSignal: number; // $/kWh
+  stabilityIndex: number; // 0-1 (1 = stable)
+  demandResponseActive: boolean;
+}
+```
+
+**UserProfile** (ML Classification Output):
+```typescript
+interface UserProfile {
+  userId: string;
+  userType: 'Commuter' | 'Fleet' | 'Occasional';
+  behaviorMetrics: {
+    avgArrivalHour: number;
+    avgSessionDuration: number;
+    weeklyFrequency: number;
+    energyConsistency: number;
+    priceElasticity: number;
+  };
+  preferences: {
+    acceptsDelayedCharging: boolean;
+    maxAcceptableDelay: number; // minutes
+    costSensitive: boolean;
+    environmentallyConscious: boolean;
+  };
+  lastUpdated: DateTime;
 }
 ```
 
 ### Database Schema
 
-**PostgreSQL Tables**:
+**PostgreSQL Tables for Software-Based Approach**:
 
 ```sql
--- Charging stations with transformer specifications
-CREATE TABLE stations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  latitude DECIMAL(10, 8) NOT NULL,
-  longitude DECIMAL(11, 8) NOT NULL,
-  transformer_rating_kva INTEGER NOT NULL,
-  rated_temp_rise_c DECIMAL(5, 2) NOT NULL,
-  operator_id TEXT,
-  status TEXT DEFAULT 'OPERATIONAL',
+-- Historical charging sessions for ML training (ACN-Data format)
+CREATE TABLE charging_sessions (
+  session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  station_id UUID NOT NULL,
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+  connection_duration_hours DECIMAL(8, 2) NOT NULL,
+  energy_delivered_kwh DECIMAL(8, 2) NOT NULL,
+  peak_power_kw DECIMAL(8, 2) NOT NULL,
+  temperature_c DECIMAL(5, 2) NOT NULL,
+  electricity_price DECIMAL(8, 4) NOT NULL,
+  user_type TEXT CHECK (user_type IN ('Commuter', 'Fleet', 'Occasional')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create spatial index for geospatial queries
-CREATE INDEX idx_stations_location ON stations USING GIST (
-  ST_Point(longitude, latitude)
-);
+-- Index for time-series ML queries
+CREATE INDEX idx_charging_sessions_timestamp ON charging_sessions (timestamp DESC);
+CREATE INDEX idx_charging_sessions_user_type ON charging_sessions (user_type, timestamp);
 
--- Active and historical bookings
-CREATE TABLE bookings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  station_id UUID NOT NULL,
+-- Active EV charging sessions for real-time optimization
+CREATE TABLE active_ev_sessions (
+  session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  charger_id TEXT NOT NULL,
+  connector_id INTEGER NOT NULL,
   user_id TEXT NOT NULL,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  expected_energy_kwh DECIMAL(8, 2) NOT NULL,
-  expected_power_kw DECIMAL(8, 2) NOT NULL,
-  status TEXT DEFAULT 'CONFIRMED',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE
+  current_soc_percent INTEGER NOT NULL,
+  target_soc_percent INTEGER NOT NULL,
+  required_energy_kwh DECIMAL(8, 2) NOT NULL,
+  max_power_kw DECIMAL(8, 2) NOT NULL,
+  arrival_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  departure_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  is_flexible BOOLEAN DEFAULT true,
+  priority_level TEXT DEFAULT 'MEDIUM' CHECK (priority_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for time-based booking queries
-CREATE INDEX idx_bookings_time_range ON bookings (station_id, start_time, end_time);
-CREATE INDEX idx_bookings_status ON bookings (status, created_at);
+-- Index for optimization queries
+CREATE INDEX idx_active_sessions_departure ON active_ev_sessions (departure_time);
+CREATE INDEX idx_active_sessions_charger ON active_ev_sessions (charger_id, arrival_time);
 
--- Time-series thermal and load data
-CREATE TABLE grid_metrics (
-  id BIGSERIAL PRIMARY KEY,
-  station_id UUID NOT NULL,
+-- ML model predictions and forecasts
+CREATE TABLE demand_forecasts (
+  forecast_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transformer_id TEXT NOT NULL,
+  forecast_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+  prediction_horizon_hours INTEGER NOT NULL,
+  predicted_demand_kw DECIMAL(8, 2) NOT NULL,
+  confidence_interval_lower DECIMAL(8, 2),
+  confidence_interval_upper DECIMAL(8, 2),
+  model_version TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index for forecast queries
+CREATE INDEX idx_demand_forecasts_time ON demand_forecasts (transformer_id, forecast_timestamp);
+
+-- MILP optimization results and charging schedules
+CREATE TABLE charging_schedules (
+  schedule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transformer_id TEXT NOT NULL,
+  generated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,
+  total_peak_reduction_kw DECIMAL(8, 2) NOT NULL,
+  predicted_peak_load_kw DECIMAL(8, 2) NOT NULL,
+  transformer_utilization_percent DECIMAL(5, 2) NOT NULL,
+  cost_savings_usd DECIMAL(10, 2),
+  optimization_status TEXT DEFAULT 'OPTIMAL',
+  solver_time_seconds DECIMAL(8, 3),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Individual EV power profiles from MILP solution
+CREATE TABLE ev_power_profiles (
+  profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id UUID NOT NULL,
+  ev_session_id UUID NOT NULL,
+  charger_id TEXT NOT NULL,
+  ocpp_profile_id INTEGER NOT NULL,
+  time_slot INTEGER NOT NULL, -- Hour offset from schedule start
+  power_limit_kw DECIMAL(8, 2) NOT NULL,
+  estimated_completion_time TIMESTAMP WITH TIME ZONE,
+  user_notification TEXT,
+  FOREIGN KEY (schedule_id) REFERENCES charging_schedules(id) ON DELETE CASCADE,
+  FOREIGN KEY (ev_session_id) REFERENCES active_ev_sessions(session_id) ON DELETE CASCADE
+);
+
+-- Index for OCPP profile queries
+CREATE INDEX idx_ev_power_profiles_charger ON ev_power_profiles (charger_id, time_slot);
+CREATE INDEX idx_ev_power_profiles_schedule ON ev_power_profiles (schedule_id, time_slot);
+
+-- Real-time grid signals and transformer data
+CREATE TABLE grid_signals (
+  signal_id BIGSERIAL PRIMARY KEY,
+  transformer_id TEXT NOT NULL,
   timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
   current_load_kw DECIMAL(8, 2) NOT NULL,
-  projected_temp_c DECIMAL(5, 2) NOT NULL,
-  ambient_temp_c DECIMAL(5, 2) NOT NULL,
-  grid_health_status TEXT NOT NULL CHECK (grid_health_status IN ('GREEN', 'YELLOW', 'RED')),
-  thermal_headroom_kw DECIMAL(8, 2) NOT NULL,
-  FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE
+  capacity_limit_kw DECIMAL(8, 2) NOT NULL,
+  utilization_percent DECIMAL(5, 2) NOT NULL,
+  price_signal_usd_per_kwh DECIMAL(8, 4) NOT NULL,
+  stability_index DECIMAL(3, 2) NOT NULL CHECK (stability_index >= 0 AND stability_index <= 1),
+  demand_response_active BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for time-series queries
-CREATE INDEX idx_grid_metrics_station_time ON grid_metrics (station_id, timestamp DESC);
-CREATE INDEX idx_grid_metrics_health ON grid_metrics (grid_health_status, timestamp);
+-- Index for real-time grid monitoring
+CREATE INDEX idx_grid_signals_transformer_time ON grid_signals (transformer_id, timestamp DESC);
+CREATE INDEX idx_grid_signals_utilization ON grid_signals (utilization_percent DESC, timestamp);
 
--- Cached weather data
-CREATE TABLE weather_cache (
-  location_key TEXT PRIMARY KEY,
-  temperature_c DECIMAL(5, 2) NOT NULL,
-  cached_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+-- User behavior profiles from K-Means clustering
+CREATE TABLE user_profiles (
+  user_id TEXT PRIMARY KEY,
+  user_type TEXT NOT NULL CHECK (user_type IN ('Commuter', 'Fleet', 'Occasional')),
+  avg_arrival_hour DECIMAL(4, 2),
+  avg_session_duration_hours DECIMAL(6, 2),
+  weekly_frequency DECIMAL(4, 2),
+  energy_consistency DECIMAL(6, 2),
+  price_elasticity DECIMAL(4, 2),
+  accepts_delayed_charging BOOLEAN DEFAULT true,
+  max_acceptable_delay_minutes INTEGER DEFAULT 60,
+  cost_sensitive BOOLEAN DEFAULT false,
+  environmentally_conscious BOOLEAN DEFAULT false,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for weather cache cleanup
-CREATE INDEX idx_weather_cache_expires ON weather_cache (expires_at);
-
--- Thermal reservations for booking validation
-CREATE TABLE thermal_reservations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  station_id UUID NOT NULL,
-  booking_id UUID NOT NULL,
-  reserved_capacity_kw DECIMAL(8, 2) NOT NULL,
-  projected_temp_rise_c DECIMAL(5, 2) NOT NULL,
-  safety_margin_c DECIMAL(5, 2) NOT NULL,
-  valid_from TIMESTAMP WITH TIME ZONE NOT NULL,
-  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE,
-  FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+-- OCPP message log for debugging and compliance
+CREATE TABLE ocpp_messages (
+  message_id BIGSERIAL PRIMARY KEY,
+  charger_id TEXT NOT NULL,
+  message_type TEXT NOT NULL,
+  action TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  response JSONB,
+  status TEXT DEFAULT 'SENT',
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for thermal reservation queries
-CREATE INDEX idx_thermal_reservations_station_time ON thermal_reservations (station_id, valid_from, valid_until);
+-- Index for OCPP message queries
+CREATE INDEX idx_ocpp_messages_charger_time ON ocpp_messages (charger_id, timestamp DESC);
+CREATE INDEX idx_ocpp_messages_action ON ocpp_messages (action, timestamp);
 ```
 
-## Correctness Properties
+## Software Workflow
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+The system implements a continuous Monitor → Predict → Optimize → Execute → Notify cycle:
 
-Before defining the correctness properties, I need to analyze the acceptance criteria from the requirements to determine which are testable as properties.
+### 1. Monitor Phase
+- **OCPP Controller** listens to charger status via WebSocket connections
+- **Grid Signal Monitor** receives real-time transformer load data via MQTT
+- **Vehicle Telematics** provides SOC and departure time updates
+- All data streams into PostgreSQL for persistence and Redis for real-time access
 
-### Property 1: Station Discovery Distance Filtering
-*For any* user location and energy requirement, all stations returned by the discovery service should be within a reasonable driving distance threshold based on the energy requirement and typical EV range.
-**Validates: Requirements 1.1**
+### 2. Predict Phase  
+- **XGBoost/LSTM Engine** analyzes historical patterns every 15 minutes
+- Generates 24-hour demand forecast: `P(t) = f(hour, day_of_week, temperature, price, historical_avg)`
+- **K-Means Classifier** updates user behavior profiles weekly
+- Confidence intervals calculated for prediction uncertainty
 
-### Property 2: Grid Health Color Coding Consistency
-*For any* charging station with calculated grid health status, the map interface should display the station marker with the correct color (Green for safe, Yellow for caution, Red for critical) corresponding to its thermal status.
-**Validates: Requirements 1.2, 5.2**
+### 3. Optimize Phase
+- **MILP Solver** runs every 30 minutes or when new EVs connect
+- **Objective**: Minimize peak power draw while meeting all departure constraints
+- **Constraints**: 
+  - `Sum(power_t) <= transformer_limit` for all time slots
+  - `Sum(energy_delivered) >= required_energy` for each EV
+  - `power_t <= max_charger_power` for each EV
+- **Output**: Optimal power allocation schedule for next 24 hours
 
-### Property 3: Thermal Model Deterministic Calculation
-*For any* set of input parameters (current load, ambient temperature, existing bookings), the Thermal Digital Twin should always produce the same temperature calculation using the Top-Oil Temperature Model, ensuring deterministic physics-based results.
-**Validates: Requirements 1.3, 2.4**
+### 4. Execute Phase
+- **OCPP Controller** sends `SetChargingProfile` commands to chargers
+- Each command specifies power limits per hour: `"limit": 7000W for next 20 minutes"`
+- **Real-time Monitoring** tracks actual vs. planned power consumption
+- **Adaptive Control** adjusts profiles if conditions change
 
-### Property 4: Critical Temperature Status Assignment
-*For any* station where the projected transformer temperature exceeds 110°C, the system should always mark it with Red grid health status and deprioritize it in station recommendations.
-**Validates: Requirements 1.4**
+### 5. Notify Phase
+- **Push Notifications** inform users of charging speed changes
+- **Example Message**: "Your charging speed is reduced to save the grid, but you will still be 100% full by 8:00 AM."
+- **Fleet Dashboard** shows system-wide optimization results
+- **Cost/Environmental Impact** reporting for user engagement
 
-### Property 5: Slot Score Ranking Consistency
-*For any* set of available charging stations, the ranking should always follow the Slot Score formula combining distance and thermal availability, with higher scores indicating better recommendations.
-**Validates: Requirements 1.5**
+```python
+# Example Workflow Implementation
+class ChargingOS:
+    def __init__(self):
+        self.predictor = DemandForecaster()
+        self.optimizer = DynamicLoadBalancer(transformer_limit_kw=500)
+        self.ocpp_controller = OCPPController()
+        self.notification_service = NotificationService()
+        
+    async def run_optimization_cycle(self):
+        """Main workflow loop - runs every 30 minutes"""
+        
+        # 1. Monitor: Get current state
+        active_sessions = await self.get_active_ev_sessions()
+        grid_signals = await self.get_current_grid_signals()
+        
+        # 2. Predict: Forecast next 24 hours
+        demand_forecast = self.predictor.predict_24h(datetime.now())
+        
+        # 3. Optimize: Solve MILP problem
+        schedule = self.optimizer.optimize_charging_schedule(
+            connected_evs=active_sessions,
+            predicted_demand=demand_forecast,
+            current_grid_load=grid_signals.current_load_kw
+        )
+        
+        # 4. Execute: Send OCPP commands
+        for ev_schedule in schedule.ev_schedules:
+            profile = self.create_ocpp_profile(ev_schedule)
+            await self.ocpp_controller.sendChargingProfile(
+                ev_schedule.charger_id, 
+                profile
+            )
+            
+        # 5. Notify: Update users
+        for ev_schedule in schedule.ev_schedules:
+            if ev_schedule.power_reduced:
+                await self.notification_service.notify_user(
+                    ev_schedule.user_id,
+                    f"Smart charging active. You'll be {ev_schedule.target_soc}% charged by {ev_schedule.completion_time}"
+                )
+                
+        # Save results for monitoring
+        await self.save_schedule_results(schedule)
+```
 
-### Property 6: Thermal Impact Simulation Completeness
-*For any* booking request, the thermal simulation should always include both the existing load profile and the new requested load when calculating projected transformer temperature.
-**Validates: Requirements 2.1**
+## Error Handling and Resilience
 
-### Property 7: Unsafe Booking Rejection with Alternatives
-*For any* booking request that would cause transformer temperature to exceed safe limits, the system should reject the request with a 409 Conflict status and provide alternative suggestions (different stations, times, or power levels).
-**Validates: Requirements 2.2, 4.1, 4.2, 4.3, 4.4**
+The system implements comprehensive error handling across all software layers:
 
-### Property 8: Thermal Capacity Reservation Consistency
-*For any* confirmed booking, the system should always reserve the corresponding thermal capacity in the Thermal Digital Twin and reflect this reservation in all subsequent thermal calculations.
-**Validates: Requirements 2.3, 6.5**
+### Machine Learning Pipeline Errors
+- **Training Data Issues**: Handle missing values, outliers, and data quality problems
+- **Model Prediction Failures**: Fallback to historical averages or simple heuristics
+- **Feature Engineering Errors**: Robust feature extraction with default values
+- **Model Drift Detection**: Automatic retraining triggers when accuracy degrades
 
-### Property 9: Weather-Based Thermal Recalculation
-*For any* change in ambient temperature, all thermal projections for all stations should be recalculated using the updated weather data to maintain accuracy.
-**Validates: Requirements 2.5**
+### Optimization Solver Errors
+- **Infeasible MILP Problems**: Constraint relaxation and alternative objective functions
+- **Solver Timeout**: Suboptimal solution acceptance with time limits
+- **Memory/Resource Limits**: Problem decomposition and rolling horizon approaches
+- **Numerical Instability**: Solver parameter tuning and problem reformulation
 
-### Property 10: Comprehensive Data Persistence
-*For any* system operation (station data, booking creation, thermal calculation), all required data fields should be persisted to the database with complete information and proper relationships.
-**Validates: Requirements 8.1, 8.2, 8.3**
+### OCPP Communication Errors
+- **Charger Disconnection**: Automatic reconnection and message queuing
+- **Protocol Violations**: Message validation and error recovery procedures
+- **Network Latency**: Timeout handling and retry mechanisms
+- **Command Rejection**: Alternative charging profiles and manual override options
 
-### Property 11: Thermal Capacity Double-Booking Prevention
-*For any* overlapping time periods at the same station, the system should prevent multiple bookings from reserving the same thermal capacity, ensuring no double-booking of transformer load capacity.
-**Validates: Requirements 6.4**
-
-### Property 12: Booking Cancellation Capacity Release
-*For any* cancelled booking, the system should immediately release all reserved thermal capacity, making it available for new booking requests.
-**Validates: Requirements 6.5**
-
-### Property 13: Concurrent Operation Data Integrity
-*For any* set of concurrent booking requests targeting the same station, the system should maintain data consistency and prevent race conditions through proper transaction handling.
-**Validates: Requirements 8.4, 10.4**
-
-### Property 14: Fallback Behavior with Cached Data
-*For any* external API failure, the system should use cached data when available and provide clear degraded service notifications to users.
-**Validates: Requirements 7.4**
-
-### Property 15: System Component Failure Graceful Degradation
-*For any* system component failure, the system should provide graceful degradation of functionality and clear error messages rather than complete system failure.
-**Validates: Requirements 10.5**
-
-## Error Handling
-
-The system implements comprehensive error handling across all components:
-
-### Thermal Calculation Errors
-- **Invalid Input Data**: Return default safe values and log warnings
-- **Missing Weather Data**: Use cached values or regional averages
-- **Calculation Overflow**: Apply safety limits and alert operators
-
-### External API Failures
-- **Open Charge Map Unavailable**: Use cached station data with staleness indicators
-- **Weather API Timeout**: Use last known temperature with degraded accuracy warnings
-- **Distance API Failure**: Fall back to Haversine distance calculations
-
-### Database Errors
-- **Connection Failures**: Implement connection pooling and retry logic
-- **Transaction Conflicts**: Use optimistic locking with retry mechanisms
-- **Data Corruption**: Validate data integrity on read operations
-
-### User Interface Errors
-- **Network Connectivity**: Provide offline mode with cached data
-- **Invalid User Input**: Client-side validation with clear error messages
-- **Session Timeout**: Graceful re-authentication flow
+### Real-time Data Stream Errors
+- **MQTT Broker Failures**: Message persistence and alternative data sources
+- **Grid Signal Interruption**: Cached data usage and degraded operation modes
+- **Vehicle Telematics Loss**: User input fallbacks and estimation algorithms
+- **Database Connection Issues**: Connection pooling, failover, and data buffering
 
 ## Testing Strategy
 
-The system employs a dual testing approach combining unit tests for specific scenarios and property-based tests for comprehensive validation:
+The system employs a comprehensive testing approach combining unit tests, integration tests, and end-to-end validation:
+
+### Machine Learning Model Testing
+- **Framework**: pytest with scikit-learn testing utilities
+- **Cross-Validation**: Time-series split validation for demand forecasting
+- **Model Performance**: MAE, RMSE, MAPE metrics for prediction accuracy
+- **A/B Testing**: Comparative analysis between XGBoost and LSTM models
+- **Data Quality**: Automated data validation and anomaly detection
+
+### Optimization Algorithm Testing
+- **Framework**: pytest with PuLP/Gurobi test scenarios
+- **Constraint Validation**: Verify all MILP constraints are satisfied
+- **Optimality Testing**: Compare solutions against known optimal benchmarks
+- **Stress Testing**: High-load scenarios with many concurrent EVs
+- **Performance Testing**: Solver time and memory usage optimization
+
+### OCPP Protocol Testing
+- **Framework**: Jest/Mocha for Node.js WebSocket testing
+- **Protocol Compliance**: OCPP 1.6/2.0 specification conformance testing
+- **Message Validation**: JSON schema validation for all OCPP messages
+- **Connection Testing**: Network failure and reconnection scenarios
+- **Load Testing**: Concurrent charger communication stress testing
+
+### End-to-End System Testing
+- **Workflow Testing**: Complete Monitor → Predict → Optimize → Execute → Notify cycle
+- **Integration Testing**: All system components working together
+- **Performance Testing**: Response time and throughput under load
+- **Reliability Testing**: System uptime and failure recovery validation
+- **User Acceptance Testing**: Real-world scenario validation with actual users
 
 ### Property-Based Testing
-- **Framework**: fast-check (JavaScript) for comprehensive input coverage
-- **Configuration**: Minimum 100 iterations per property test to ensure statistical confidence
-- **Coverage**: Each correctness property implemented as a separate property-based test
-- **Tagging**: Each test tagged with format: **Feature: transformer-sentinel-protocol, Property {number}: {property_text}**
-
-### Unit Testing
-- **Framework**: Jest for JavaScript/TypeScript components
-- **Focus Areas**: 
-  - Specific thermal calculation examples with known inputs/outputs
-  - Edge cases like extreme temperatures or zero loads
-  - Integration points between components
-  - Error conditions and fallback behaviors
-- **Coverage**: Target 90% code coverage for core business logic
-
-### Integration Testing
-- **API Testing**: Validate end-to-end booking flows with real database
-- **External Service Mocking**: Test fallback behaviors when APIs are unavailable
-- **Database Testing**: Verify ACID properties and concurrent operation handling
-- **Performance Testing**: Validate response time requirements under load
-
-### Testing Configuration
-Property-based tests must run with minimum 100 iterations to account for randomization and provide statistical confidence in the results. Each property test must reference its corresponding design document property using the tag format specified above.
-
-The testing strategy ensures both concrete validation through unit tests and comprehensive correctness verification through property-based testing, providing confidence in system reliability and correctness.
+- **Framework**: Hypothesis (Python) and fast-check (JavaScript)
+- **ML Properties**: Prediction consistency and boundary condition testing
+- **Optimization Properties**: Constraint satisfaction and solution feasibility
+- **OCPP Properties**: Message format and protocol state consistency
+- **Data Properties**: Database integrity and consistency validation
 
 ## Requirements to Design Mapping
 
