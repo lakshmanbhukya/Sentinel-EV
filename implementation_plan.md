@@ -1,10 +1,10 @@
 This implementation plan, the Transformer Sentinel Protocol, is designed for a high-intensity development cycle (e.g., a 24-hour hackathon or a 1-week sprint). It prioritizes deterministic physics over complex AI to ensure the demo never "hallucinates" grid stability.
 1️⃣ CORE SYSTEM OVERVIEW
-The Transformer Sentinel is a grid-resilience middleware that prevents distribution transformer failure caused by simultaneous Electric Vehicle (EV) charging. Instead of a "dumb" first-come-first-served booking system, it uses a Thermal Digital Twin to calculate the real-time health of the local grid.
+The Transformer Sentinel is a grid-resilience middleware that prevents distribution transformer failure caused by simultaneous Electric Vehicle (EV) charging. Instead of a "dumb" first-come-first-served booking system, it uses an EV Energy Digital Twin to calculate the real-time health of the local grid.
 Primary User Flow:
 Discovery: User enters their destination and energy requirement (e.g., "Need 40kWh").
 Grid-Aware Recommendation: The system analyzes three nearby charging centers. It doesn't just check "Is a plug free?" but "Can the transformer handle this draw without overheating?"
-Dynamic Slot Booking: The user books a slot. The backend "reserves" thermal capacity, updating the transformer's projected heat curve.
+Dynamic Slot Booking: The user books a slot. The backend "reserves" EV energy capacity, updating the transformer's projected heat curve.
 2️⃣ IMPLEMENTATION VARIANTS
 Variant
 Purpose
@@ -13,7 +13,7 @@ A. Web App
 User-facing booking & station discovery.
 React, Vite, Tailwind, Leaflet.js
 B. API-First Backend
-The "Sentinel Engine" (Thermal math + Orchestration).
+The "Sentinel Engine" (EV Energy math + Orchestration).
 Fastify (Node.js) or Flask (Python)
 C. Rapid Data App
 (Crucial for Demo) Technical dashboard for judges.
@@ -25,13 +25,13 @@ Styling: Tailwind CSS (Radix UI for accessible components).
 Core Components:
 StationMap: Leaflet-based map showing pins colored by "Grid Health" (Green/Yellow/Red).
 BookingPanel: Drawer/Modal for SoC input and time-window selection.
-ThermalPreview: Small sparkline showing the transformer’s temperature if the user plugs in.
+EVEnergyPreview: Small sparkline showing the transformer’s temperature if the user plugs in.
 State Management: Zustand (Low boilerplate, perfect for a single-day build).
 4️⃣ BACKEND PLAN (Variant B)
 Framework: Fastify (Faster than Express, built-in Schema validation).
 Endpoints:
-GET /stations/nearby: Returns stations filtered by distance AND current thermal headroom.
-POST /bookings: Validates if the new load violates the IEC 60076-7 thermal limit before confirming.
+GET /stations/nearby: Returns stations filtered by distance AND current EV energy headroom.
+POST /bookings: Validates if the new load violates the IEC 60076-7 EV energy limit before confirming.
 GET /transformer/:id/telemetry: Streams simulated heat/load data for the dashboard.
 The Logic (The "Sentinel" Math):
 Uses the Top-Oil Temperature model.
@@ -69,7 +69,7 @@ Used to simulate "Current Spikes" on the grid.
 Trigger: User requests a 22kW charge at Station X at 6:00 PM.
 Simulation: The Backend runs a "Shadow Simulation": Baseload (UCI Data) + Existing Bookings + New Request + Ambient Temp (OpenWeather).
 Conflict Check: If $Projected\_Temp > 110^\circ C$, the system returns a 409 Conflict and suggests a different station or a lower 7kW charge rate.
-Confirmation: On success, the booking is saved, and the "Sentinel Dashboard" (Streamlit) reflects the new thermal spike in real-time.
+Confirmation: On success, the booking is saved, and the "Sentinel Dashboard" (Streamlit) reflects the new EV energy spike in real-time.
 8️⃣ THINGS TO WATCH OUT FOR
 API Latency: Don't call OpenWeather on every map move. Cache it for 30 minutes.
 Simulation Drift: Ensure your "virtual time" in the demo matches the clock, or use a "Fast-Forward" toggle to show 24 hours of heat in 30 seconds.

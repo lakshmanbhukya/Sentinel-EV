@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #020617; /* Slate-950/Black Hybrid */
+    color: #e2e8f0;
+    font-family: 'Outfit', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl;
+  }
+
+  .glass-panel-heavy {
+    @apply bg-[#050b14]/80 backdrop-blur-2xl border border-slate-800/60 shadow-2xl;
+  }
+
+  .text-neon-cyan {
+    @apply text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)];
+  }
+  
+  .text-neon-lime {
+    @apply text-lime-400 drop-shadow-[0_0_8px_rgba(163,230,53,0.5)];
+  }
+
+  .text-plasma-red {
+    @apply text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)];
+  }
+}
+
+/* Custom Pulsing Markers */
+.marker-pulse-red {
+    background: rgba(239, 68, 68, 0.4);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 1);
+    transform: scale(1);
+    animation: critical-pulse 2s infinite;
+}
+
+@keyframes critical-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.2); box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.marker-pulse-green {
+    background: rgba(16, 185, 129, 0.3);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 1);
+    animation: safe-pulse 3s infinite;
+}
+
+@keyframes safe-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Leaflet Popup Overrides */
+.leaflet-popup-content-wrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+.leaflet-popup-tip {
+    background: #0f172a !important; /* Match void-light */
+}
+
+
+/* Grid/Tech Background Pattern */
+.bg-grid-void {
+  background-image: linear-gradient(rgba(30, 41, 59, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
