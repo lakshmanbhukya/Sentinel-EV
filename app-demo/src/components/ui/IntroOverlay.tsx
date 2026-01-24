@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useDemoStore } from '../../store/useDemoStore';
-import { Zap, AlertTriangle, Activity } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 export default function IntroOverlay() {
   const setView = useDemoStore((state) => state.setView);
@@ -34,33 +34,9 @@ export default function IntroOverlay() {
           
           <p className="text-xl text-slate-400 font-light leading-relaxed">
             Unmanaged EV charging is pushing distribution transformers to the breaking point. 
-            The grid needs a <span className="text-white font-medium">Sentinel</span>.
+            The grid needs a <span className="text-white font-medium">Sentinel EV</span>.
           </p>
         </motion.div>
-
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl backdrop-blur-sm">
-            <Activity className="w-6 h-6 text-red-500 mb-2 mx-auto" />
-            <div className="text-2xl font-bold">112°C</div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest">Transformer Temp</div>
-          </div>
-          <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl backdrop-blur-sm">
-            <Zap className="w-6 h-6 text-yellow-500 mb-2 mx-auto" />
-            <div className="text-2xl font-bold">842 MW</div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest">Current Load</div>
-          </div>
-          <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl backdrop-blur-sm">
-            <AlertTriangle className="w-6 h-6 text-orange-500 mb-2 mx-auto" />
-            <div className="text-2xl font-bold">CRITICAL</div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest">Grid Status</div>
-          </div>
-        </motion.div>
-
         <motion.button
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

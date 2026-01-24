@@ -23,7 +23,28 @@ export default function NearbyStationsPanel({
     const [cityStations, setCityStations] = useState<Station[]>([]);
     
     // Use city stations if a city is selected, otherwise use prop stations
-    const displayStations = selectedCity ? cityStations : stations;
+    const baseStations = selectedCity ? cityStations : stations;
+    
+    // Sort stations: safe/green stations first, then by status priority
+    const displayStations = [...baseStations].sort((a, b) => {
+        // Status priority: safe (0) > warning (1) > critical (2)
+        const statusPriority: Record<string, number> = {
+            'safe': 0,
+            'warning': 1,
+            'critical': 2
+        };
+        
+        const aPriority = statusPriority[a.status] ?? 3;
+        const bPriority = statusPriority[b.status] ?? 3;
+        
+        // Primary sort by status (safe first)
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+        
+        // Secondary sort by load (lower load first for same status)
+        return a.load - b.load;
+    });
     
     const handleCitySelect = (city: CityData) => {
         setSelectedCity(city.name);

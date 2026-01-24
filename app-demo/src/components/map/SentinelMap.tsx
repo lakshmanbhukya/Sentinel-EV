@@ -4,7 +4,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
-import { Zap, Activity, AlertTriangle, Search } from 'lucide-react';
 import { useDemoStore } from '../../store/useDemoStore';
 import NearbyStationsPanel from '../ui/NearbyStationsPanel';
 import CustomMapMarker from './CustomMapMarker';
@@ -85,7 +84,6 @@ export default function SentinelMap() {
 
     const [routeDest, setRouteDest] = useState<[number, number] | null>(null);
     const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
 
     // 2. Use Data Hook (Replaces previous useEffect fetch logic)
     const { stations: dataStations, isMock, isLoading } = useStationsData(
@@ -129,25 +127,15 @@ export default function SentinelMap() {
             <div className="absolute left-6 top-6 bottom-6 w-96 flex flex-col z-[500] pointer-events-none">
                 <div className="w-full h-full glass-panel-heavy rounded-2xl flex flex-col overflow-hidden pointer-events-auto">
                     <div className="p-6 border-b border-slate-700/30">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="mb-6">
                             <div>
-                                <h1 className="text-2xl font-mono font-bold text-white tracking-tight">SENTINEL<span className="text-neon-cyan">.OS</span></h1>
+                                <h1 className="text-2xl font-mono font-bold text-white tracking-tight">SENTINEL<span className="text-neon-cyan">.EV</span></h1>
                                 <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Grid Intelligence Protocol</p>
                             </div>
-                            <div className="flex bg-slate-800/50 rounded-lg p-1">
-                                <button onClick={() => setViewMode('map')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'map' ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'text-slate-400 hover:text-white'}`}>MAP</button>
-                                <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'list' ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'text-slate-400 hover:text-white'}`}>LIST</button>
-                            </div>
-                        </div>
-                        
-                        <div className="relative group">
-                            <div className="absolute inset-0 bg-neon-cyan/20 blur-xl opacity-0 group-hover:opacity-20 transition-opacity rounded-lg"></div>
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-neon-cyan transition-colors" />
-                            <input type="text" placeholder="Search grid assets..." className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-neon-cyan/50 focus:bg-slate-900/80 transition-all font-mono text-sm" />
                         </div>
 
                         {/* City Selector */}
-                        <div className="mt-4">
+                        <div className="mb-4">
                             <CitySelector
                                 selectedCity={selectedCity}
                                 onCityChange={(city) => {
@@ -156,23 +144,9 @@ export default function SentinelMap() {
                                 }}
                             />
                         </div>
-
-                       <div className="flex items-center gap-3 mt-4">
-                            <select className="bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-neon-cyan/50 outline-none">
-                                <option>Status: All</option>
-                                <option>Safe</option>
-                                <option>Warning</option>
-                                <option>Critical</option>
-                            </select>
-                            <select className="bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-neon-cyan/50 outline-none">
-                                <option>Load: Any</option>
-                                <option>&lt; 50%</option>
-                                <option>&gt; 80%</option>
-                            </select>
-                        </div>
                         
                         {/* Status Indicator */}
-                        <div className="mt-4 flex items-center justify-between">
+                        <div className="flex items-center justify-between">
                              <div className="flex items-center gap-2">
                                 {isLoading ? (
                                     <>
@@ -192,41 +166,6 @@ export default function SentinelMap() {
                              </div>
                         </div>
                     </div>
-
-                    <div className="p-6 space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-slate-800/20 rounded-xl p-3 border border-slate-700/30">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Activity className="w-3 h-3 text-neon-cyan" />
-                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">Active Nodes</span>
-                                </div>
-                                <div className="text-xl font-mono font-bold text-white">{totalStations}</div>
-                            </div>
-                            <div className="bg-slate-800/20 rounded-xl p-3 border border-slate-700/30">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Zap className="w-3 h-3 text-neon-lime" />
-                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">Grid Cap</span>
-                                </div>
-                                <div className="text-xl font-mono font-bold text-white">{totalCapacity} <span className="text-xs text-slate-500 font-sans">kW</span></div>
-                            </div>
-                            <div className="bg-slate-800/20 rounded-xl p-3 border border-slate-700/30">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Activity className="w-3 h-3 text-amber-400" />
-                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">Avg Load</span>
-                                </div>
-                                <div className="text-xl font-mono font-bold text-white">{averageLoad}%</div>
-                            </div>
-                            <div className="bg-slate-800/20 rounded-xl p-3 border border-slate-700/30 relative overflow-hidden">
-                                {criticalStations > 0 && <div className="absolute inset-0 bg-plasma/10 animate-pulse"></div>}
-                                <div className="flex items-center gap-2 mb-1 relative z-10">
-                                    <AlertTriangle className="w-3 h-3 text-plasma" />
-                                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">Critical</span>
-                                </div>
-                                <div className="text-xl font-mono font-bold text-plasma relative z-10">{criticalStations}</div>
-                            </div>
-                        </div>
-                    </div>
-
                     <NearbyStationsPanel 
                         stations={stations}
                         selectedStationId={selectedStationId}

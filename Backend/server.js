@@ -11,6 +11,7 @@ const scheduleRoutes = require('./routes/scheduleRoutes');
 const gridRoutes = require('./routes/gridRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const stationRoutes = require('./routes/stationRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/grid', gridRoutes);
 app.use('/api/report', reportRoutes);
 app.use('/api/stations', stationRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
