@@ -947,7 +947,7 @@ FLASK_ML_SERVICE_URL=http://localhost:5000
 
 # OpenCharge API
 OPENCHARGE_API_KEY=your_api_key_here
-OPENCHARGE_API_URL=https://api.openchargemap.io/v3
+OPENCHARGE_BASE_URL=https://api.openchargemap.io/v3
 
 # Scheduling Configuration
 LOAD_THRESHOLD_KW=90

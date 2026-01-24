@@ -1,23 +1,33 @@
 import { useState } from 'react';
 import { useDemoStore } from '../../store/useDemoStore';
-import { Zap, AlertTriangle, CheckCircle2, Car } from 'lucide-react';
+import { useScheduleBooking } from '../../hooks/useScheduling'; // New Hook
+import { AlertTriangle, CheckCircle2, Car, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function BookingPanel({ stationId }: { stationId: string }) {
   const { slotStates, bookSlot } = useDemoStore();
+  const { scheduleBooking, isSubmitting } = useScheduleBooking();
   const slots = slotStates[stationId];
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState<'normal' | 'emergency' | null>(null);
 
   if (!slots) return null;
 
-  const handleBooking = (isEmergency: boolean) => {
+  const handleBooking = async (isEmergency: boolean) => {
     if (!vehicleNumber.trim()) return;
-    const success = bookSlot(stationId, vehicleNumber, isEmergency);
+    
+    // 1. Call API / Simulation
+    const success = await scheduleBooking(stationId, vehicleNumber);
+    
     if (success) {
-      setBookingSuccess(isEmergency ? 'emergency' : 'normal');
-      setVehicleNumber('');
-      setTimeout(() => setBookingSuccess(null), 3000);
+      // 2. Update Local Store (Optimistic / Confirmed)
+      const storeUpdated = bookSlot(stationId, vehicleNumber, isEmergency);
+      
+      if (storeUpdated) {
+          setBookingSuccess(isEmergency ? 'emergency' : 'normal');
+          setVehicleNumber('');
+          setTimeout(() => setBookingSuccess(null), 3000);
+      }
     }
   };
 
@@ -65,18 +75,19 @@ export default function BookingPanel({ stationId }: { stationId: string }) {
                     placeholder="Enter EV Vehicle Number" 
                     value={vehicleNumber}
                     onChange={(e) => setVehicleNumber(e.target.value)}
+                    disabled={isSubmitting}
                     className="w-full bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-neon-cyan/50 font-mono"
                 />
                 <div className="flex gap-2">
                     <button 
-                        disabled={isFull || !vehicleNumber}
+                        disabled={isFull || !vehicleNumber || isSubmitting}
                         onClick={() => handleBooking(false)}
                         className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-sm font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
-                        Book Slot
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Book Slot"}
                     </button>
                     <button 
-                         disabled={slots.emergencySlots === 0 || !vehicleNumber}
+                         disabled={slots.emergencySlots === 0 || !vehicleNumber || isSubmitting}
                          onClick={() => handleBooking(true)}
                          className="px-3 bg-slate-800 hover:bg-red-900/30 disabled:opacity-50 border border-red-900/50 text-plasma text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
                          title="Emergency Priority Booking"

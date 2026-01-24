@@ -15,7 +15,7 @@ class OpenChargeService {
    * @param {number} radius - Radius in km (default: 10)
    * @param {number} maxResults - Maximum results (default: 50)
    */
-  async getStationsByLocation(lat, lng, radius = 10, maxResults = 50) {
+  async getStationsByLocation(lat, lng, radius = 100, maxResults = 50) {
     const cacheKey = `stations_${lat}_${lng}_${radius}`;
     
     // Check cache first

@@ -1,30 +1,34 @@
 import { Zap, Activity, Thermometer, Navigation, MoreHorizontal, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-
-// Reusing types from SentinelMap for consistency, but locally defined to avoid circular deps if needed.
-// In a real app, these would be in a shared type file.
-interface Station {
-    ID: number;
-    AddressInfo: {
-        Title: string;
-        Latitude: number;
-        Longitude: number;
-        AddressLine1: string;
-    };
-    // Derived props passed down
-    capacity: number;
-    status: 'safe' | 'warning' | 'critical';
-    load: number;
-    temp: number;
-}
+import { useState } from 'react';
+import type { Station } from '../../data/mockData';
+import { CITY_STATIONS, type CityData } from '../../data/cityStationsData';
+import CitySelector from './CitySelector';
 
 interface NearbyStationsPanelProps {
     stations: Station[];
     selectedStationId: string | null;
-    onSelectStation: (id: string, s: any) => void; // Using any for the store payload for simplicity here
+    onSelectStation: (id: string, s: Station) => void;
     onNavigate: (lat: number, lng: number) => void;
+    enableCitySelector?: boolean; // New optional prop
 }
 
-export default function NearbyStationsPanel({ stations, selectedStationId, onSelectStation, onNavigate }: NearbyStationsPanelProps) {
+export default function NearbyStationsPanel({ 
+    stations, 
+    selectedStationId, 
+    onSelectStation, 
+    onNavigate,
+    enableCitySelector = true 
+}: NearbyStationsPanelProps) {
+    const [selectedCity, setSelectedCity] = useState<string | null>(null);
+    const [cityStations, setCityStations] = useState<Station[]>([]);
+    
+    // Use city stations if a city is selected, otherwise use prop stations
+    const displayStations = selectedCity ? cityStations : stations;
+    
+    const handleCitySelect = (city: CityData) => {
+        setSelectedCity(city.name);
+        setCityStations(CITY_STATIONS[city.name] || []);
+    };
     
     // Helper helpers
     const getStatusColor = (status: string) => {
@@ -46,19 +50,39 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
     };
 
     return (
-        <div className="flex-1 overflow-y-auto">
-            <div className="px-6 pb-6 space-y-3">
-                {stations.map(st => {
+        <div className="flex-1 flex flex-col overflow-hidden">
+            {/* City Selector */}
+            {enableCitySelector && (
+                <CitySelector 
+                    selectedCity={selectedCity} 
+                    onCitySelect={handleCitySelect} 
+                />
+            )}
+            
+            {/* Station List */}
+            <div className="flex-1 overflow-y-auto">
+                <div className="px-6 pb-6 space-y-3">
+                    {displayStations.length === 0 && selectedCity && (
+                        <div className="text-center py-8 text-slate-400">
+                            <p>No stations found in {selectedCity}</p>
+                        </div>
+                    )}
+                    {displayStations.length === 0 && !selectedCity && (
+                        <div className="text-center py-8 text-slate-400">
+                            <p>Select a city to view EV stations</p>
+                        </div>
+                    )}
+                    {displayStations.map(st => {
                     const StatusIcon = getStatusIcon(st.status);
-                    const isSelected = selectedStationId === st.ID.toString();
+                    const isSelected = selectedStationId === st.id;
                     
                     return (
                         <div
-                            key={st.ID}
+                            key={st.id}
                             className={`bg-slate-800/30 rounded-lg p-4 cursor-pointer transition-all hover:bg-slate-700/40 border ${
                                 isSelected ? 'border-blue-500/50 bg-blue-900/20' : 'border-slate-700/30'
                             }`}
-                            onClick={() => onSelectStation(st.ID.toString(), st)}
+                            onClick={() => onSelectStation(st.id, st)}
                         >
                             {/* Header: Status + ID */}
                             <div className="flex items-start justify-between mb-3">
@@ -69,7 +93,7 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
                                             {st.status}
                                         </span>
                                     </div>
-                                    <span className="text-slate-500 text-xs">#{st.ID}</span>
+                                    <span className="text-slate-500 text-xs">#{st.id}</span>
                                 </div>
                                 <button className="text-slate-400 hover:text-white transition-colors">
                                     <MoreHorizontal className="w-4 h-4" />
@@ -78,10 +102,10 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
                             
                             {/* Title */}
                             <h3 className="text-white font-medium mb-1 truncate">
-                                {st.AddressInfo.Title}
+                                {st.name}
                             </h3>
                             <div className="text-slate-400 text-sm mb-4 truncate">
-                                {st.AddressInfo.AddressLine1}
+                                {st.address}
                             </div>
                             
                             {/* Metrics Strip */}
@@ -90,8 +114,12 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
                                     <div className="text-[10px] text-slate-500 uppercase mb-1">Slots</div>
                                     <div className="flex items-center justify-center gap-1">
                                         <Zap className="w-3 h-3 text-blue-400" />
-                                        <span className="text-sm font-bold text-slate-200">{st.capacity}</span>
+                                        <span className="text-sm font-bold text-slate-200">
+                                            {(st as any).capacity || 8}
+                                        </span>
                                     </div>
+                                    {/* (st as any).capacity check: Station interface might not have capacity yet if strictly from mockData. 
+                                        But enhanced stations in store might. For robust demo, we fallback to 8. */}
                                 </div>
                                 <div className="bg-slate-900/40 rounded p-2 text-center">
                                     <div className="text-[10px] text-slate-500 uppercase mb-1">Load</div>
@@ -119,7 +147,7 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
                                     className="text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/20 rounded px-3 py-1.5 transition-colors flex items-center gap-1.5"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onNavigate(st.AddressInfo.Latitude, st.AddressInfo.Longitude);
+                                        onNavigate(st.lat, st.lng);
                                     }}
                                 >
                                     <Navigation className="w-3 h-3" />
@@ -129,6 +157,7 @@ export default function NearbyStationsPanel({ stations, selectedStationId, onSel
                         </div>
                     );
                 })}
+                </div>
             </div>
         </div>
     );

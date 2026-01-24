@@ -27,6 +27,9 @@ interface DemoState {
   // New Slot Actions
   initializeSlots: (stationId: string) => void;
   bookSlot: (stationId: string, vehicleNumber: string, isEmergency: boolean) => boolean;
+  
+  // AI Agent Actions
+  updateStationStatus: (stationId: string, newStatus: 'safe' | 'warning' | 'critical') => void;
 }
 
 export interface StationSlotState {
@@ -102,7 +105,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
       }
   },
 
-  bookSlot: (stationId, vehicleNumber, isEmergency) => {
+  bookSlot: (stationId, _vehicleNumber, isEmergency) => {
       const current = get().slotStates[stationId];
       if (!current) return false;
 
@@ -135,5 +138,18 @@ export const useDemoStore = create<DemoState>((set, get) => ({
           }
       }
       return false;
+  },
+
+  updateStationStatus: (stationId, newStatus) => {
+    set(state => ({
+      stations: state.stations.map(station => 
+        station.id === stationId 
+          ? { ...station, status: newStatus }
+          : station
+      ),
+      selectedStation: state.selectedStation?.id === stationId 
+        ? { ...state.selectedStation, status: newStatus }
+        : state.selectedStation
+    }));
   }
 }));

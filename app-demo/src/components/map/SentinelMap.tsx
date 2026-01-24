@@ -8,8 +8,9 @@ import { Zap, Activity, AlertTriangle, Search } from 'lucide-react';
 import { useDemoStore } from '../../store/useDemoStore';
 import NearbyStationsPanel from '../ui/NearbyStationsPanel';
 import CustomMapMarker from './CustomMapMarker';
-
-// ... (keep generic imports)
+import CitySelector, { INDIAN_CITIES, type City } from '../ui/CitySelector';
+import { useStationsData } from '../../hooks/useStationsData'; // NEW IMPORT
+import type { Station } from '../../data/mockData'; // Standard Interface
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -21,18 +22,6 @@ let DefaultIcon = L.icon({
     iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
-
-interface OCMStation {
-    ID: number;
-    AddressInfo: {
-        Title: string;
-        Latitude: number;
-        Longitude: number;
-        AddressLine1: string;
-    };
-    Connections: { Quantity?: number }[];
-    NumberOfPoints?: number;
-}
 
 // Routing Machine Component (kept as is)
 function RoutingControl({ userLoc, destLoc }: { userLoc: [number, number] | null, destLoc: [number, number] | null }) {
@@ -83,108 +72,53 @@ export default function SentinelMap() {
     // ... (keep state)
     const { selectStation } = useDemoStore();
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-    const [stations, setStations] = useState<OCMStation[]>([]);
+    const [selectedCity, setSelectedCity] = useState<City | null>(INDIAN_CITIES[6]); // Default to Bengaluru
+    
+    // 1. Get User Location (Use selected city or default to Bangalore)
+    useEffect(() => {
+        if (selectedCity) {
+            setUserLocation([selectedCity.lat, selectedCity.lng]);
+        } else {
+            setUserLocation([12.9716, 77.5946]); // Default Bangalore
+        }
+    }, [selectedCity]);
+
     const [routeDest, setRouteDest] = useState<[number, number] | null>(null);
     const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
 
-    // 1. Get User Location (FORCED TO BANGALORE for Demo)
+    // 2. Use Data Hook (Replaces previous useEffect fetch logic)
+    const { stations: dataStations, isMock, isLoading } = useStationsData(
+        userLocation?.[0] || 12.9716, 
+        userLocation?.[1] || 77.5946, 
+        50 // Increased radius to get more stations
+    );
+
+    // Log when stations change
     useEffect(() => {
-        setUserLocation([12.9716, 77.5946]);
-    }, []);
+        console.log(`📊 Stations updated: ${dataStations.length} stations loaded (${isMock ? 'MOCK' : 'REAL'} data)`);
+    }, [dataStations.length, isMock]);
 
-    // ... (keep useEffect for fetching stations)
-    // 3. Fetch Nearby Stations (Matched to Working Python Script)
-    useEffect(() => {
-        if (!userLocation) return;
-        
-        const fetchWithRadius = async (radius: number): Promise<OCMStation[]> => {
-            const apiKey = import.meta.env.VITE_OCM_API_KEY;
-            
-            const url = `https://api.openchargemap.io/v3/poi/?output=json&latitude=${userLocation[0]}&longitude=${userLocation[1]}&distance=${radius}&distanceunit=KM`;
-            
-            const res = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-API-Key': apiKey, 
-                    'User-Agent': 'TransformerSentinelDemo/1.0',
-                    'Content-Type': 'application/json'
-                }
-            });
+    // 3. Process Stations (Assign capacity score if needed, though useStationsData might not provide it yet)
+    // We can keep the logic to "Enhance" them or just assume the Hook does enough.
+    // The previous code calculated capacity based on Connections.
+    // Our new Station interface from Transformer doesn't strictly have connections detailed unless we added it.
+    // transformStation maps mostly basic fields. 
+    // We'll augment them locally for visual richness if needed.
+    const stations: Station[] = useMemo(() => {
+         return dataStations.map(st => ({
+             ...st,
+             // Ensure optional fields if missing
+             capacity: (st as any).capacity || Math.floor(Math.random() * 8) + 2
+         }));
+    }, [dataStations]);
 
-            if (!res.ok) throw new Error(`API Error ${res.status}`);
-            const data = await res.json();
-            return data || [];
-        };
-
-        const executeSmartSearch = async () => {
-            try {
-                let data = await fetchWithRadius(5);
-                if (data.length === 0) data = await fetchWithRadius(25);
-                if (data.length === 0) data = await fetchWithRadius(100);
-
-                if (data.length > 0) {
-                    setStations(data);
-                } else {
-                    throw new Error("No stations found even at 100km radius.");
-                }
-            } catch (err) {
-                console.warn("⚠️ No Real Grid Data Found. Activating SIMULATION MODE.", err);
-                const mockStations: OCMStation[] = Array.from({ length: 8 }).map((_, i) => ({
-                    ID: 9000 + i,
-                    AddressInfo: {
-                        Title: `Demo Station ${String.fromCharCode(65 + i)} (Simulated)`,
-                        Latitude: userLocation[0] + (Math.random() - 0.5) * 0.08,
-                        Longitude: userLocation[1] + (Math.random() - 0.5) * 0.08,
-                        AddressLine1: "Simulated Grid Location"
-                    },
-                    Connections: [{ Quantity: Math.floor(Math.random() * 8) + 2 }],
-                    NumberOfPoints: Math.floor(Math.random() * 8) + 2
-                }));
-                // Only set stations if we have mock ones
-                if(mockStations.length > 0) setStations(mockStations);
-            }
-        };
-
-        executeSmartSearch();
-    }, [userLocation]);
-
-    // ... (keep helpers)
-    const getCapacityScore = (st: OCMStation) => {
-        if (st.NumberOfPoints) return st.NumberOfPoints;
-        if (st.Connections && st.Connections.length > 0) {
-            return st.Connections.reduce((acc, c) => acc + (c.Quantity || 1), 0);
-        }
-        return 1; 
-    };
-
-    const getStationStatus = (capacity: number) => {
-        if (capacity >= 10) return 'safe';
-        if (capacity >= 4) return 'warning';
-        return 'critical';
-    };
-
-    const enhancedStations = useMemo(() => {
-        return stations.map(st => {
-            const capacity = getCapacityScore(st);
-            const status = getStationStatus(capacity);
-            const load = Math.floor(Math.random() * 100);
-            const temp = Math.floor(Math.random() * 60) + 40;
-            return {
-                ...st,
-                capacity,
-                status: status as 'safe' | 'warning' | 'critical',
-                load,
-                temp
-            };
-        });
-    }, [stations]);
 
     // Calculate total metrics
     const totalStations = stations.length;
-    const totalCapacity = enhancedStations.reduce((acc, st) => acc + st.capacity, 0);
+    const totalCapacity = stations.reduce((acc, st) => acc + ((st as any).capacity || 0), 0);
     const averageLoad = 65; 
-    const criticalStations = enhancedStations.filter(st => st.status === 'critical').length;
+    const criticalStations = stations.filter(st => st.status === 'critical').length;
 
     // Default center if user location not yet loaded
     const mapCenter: [number, number] = userLocation || [40.7128, -74.0060];
@@ -212,6 +146,17 @@ export default function SentinelMap() {
                             <input type="text" placeholder="Search grid assets..." className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-neon-cyan/50 focus:bg-slate-900/80 transition-all font-mono text-sm" />
                         </div>
 
+                        {/* City Selector */}
+                        <div className="mt-4">
+                            <CitySelector
+                                selectedCity={selectedCity}
+                                onCityChange={(city) => {
+                                    console.log(`🌆 City changed to: ${city.name}`);
+                                    setSelectedCity(city);
+                                }}
+                            />
+                        </div>
+
                        <div className="flex items-center gap-3 mt-4">
                             <select className="bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-neon-cyan/50 outline-none">
                                 <option>Status: All</option>
@@ -224,6 +169,27 @@ export default function SentinelMap() {
                                 <option>&lt; 50%</option>
                                 <option>&gt; 80%</option>
                             </select>
+                        </div>
+                        
+                        {/* Status Indicator */}
+                        <div className="mt-4 flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                                {isLoading ? (
+                                    <>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                        <span className="text-[10px] text-amber-400 uppercase tracking-wider">
+                                            Loading Stations...
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                            {isMock ? "Simulation Mode" : "Grid Connected"}
+                                        </span>
+                                    </>
+                                )}
+                             </div>
                         </div>
                     </div>
 
@@ -262,30 +228,24 @@ export default function SentinelMap() {
                     </div>
 
                     <NearbyStationsPanel 
-                        stations={enhancedStations}
+                        stations={stations}
                         selectedStationId={selectedStationId}
                         onSelectStation={(id, st) => {
                             setSelectedStationId(id);
-                            selectStation({
-                                id: id,
-                                name: st.AddressInfo.Title,
-                                lat: st.AddressInfo.Latitude,
-                                lng: st.AddressInfo.Longitude,
-                                status: st.status,
-                                load: st.load,
-                                temp: st.temp,
-                                address: st.AddressInfo.AddressLine1
-                            });
+                            // Store already expects Station interface, so no mapping needed anymore!
+                            selectStation(st);
                         }}
                         onNavigate={(lat, lng) => {
                             if (userLocation) setRouteDest([lat, lng]);
                         }}
+                        enableCitySelector={false}
                     />
                 </div>
             </div>
 
             <div className="flex-1 relative z-0">
                 <MapContainer 
+                    key={`map-${selectedCity?.name || 'default'}`} // Force re-render on city change
                     center={mapCenter} 
                     zoom={13} 
                     style={{ height: '100%', width: '100%' }}
@@ -309,26 +269,17 @@ export default function SentinelMap() {
                         </CircleMarker>
                     )}
 
-                    {enhancedStations.map(st => (
+                    {stations.map(st => (
                         <CustomMapMarker
-                            key={st.ID}
+                            key={st.id}
                             station={st}
-                            isSelected={selectedStationId === st.ID.toString()}
+                            isSelected={selectedStationId === st.id}
                             onClick={() => {
-                                setSelectedStationId(st.ID.toString());
-                                selectStation({
-                                    id: st.ID.toString(),
-                                    name: st.AddressInfo.Title,
-                                    lat: st.AddressInfo.Latitude,
-                                    lng: st.AddressInfo.Longitude,
-                                    status: st.status,
-                                    load: st.load,
-                                    temp: st.temp,
-                                    address: st.AddressInfo.AddressLine1
-                                });
+                                setSelectedStationId(st.id);
+                                selectStation(st);
                             }}
                             onNavigate={() => {
-                                if (userLocation) setRouteDest([st.AddressInfo.Latitude, st.AddressInfo.Longitude]);
+                                if (userLocation) setRouteDest([st.lat, st.lng]);
                             }}
                         />
                     ))}

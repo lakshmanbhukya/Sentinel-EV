@@ -86,7 +86,7 @@ export const generateDemandPrediction = (): DemandPredictionPoint[] => {
   }
 
   // Smooth transition at "now": add a point with both to connect lines
-  const transitionPointIndex = 12; // The point representing 'now'
+  // The point representing 'now' is implicit at index 12
   // Currently we just have two separate sets implicitly. 
   // In charts, we often want the last actual point to connect to the first predicted point.
   // We'll handle visual connection in the chart component or just accept the gap/overlap style.
@@ -95,12 +95,54 @@ export const generateDemandPrediction = (): DemandPredictionPoint[] => {
 };
 
 export const generateStationMetrics = (stationId: string): OperationalMetrics => {
+  // Generate station-specific metrics based on ID for consistency
+  const stationHash = stationId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const seed = stationHash % 100;
+  
+  // Create realistic patterns based on station characteristics
+  const isHighTraffic = seed > 70;
+  const isEcoStation = stationId.includes('eco') || stationId.includes('green');
+  const isFastCharger = stationId.includes('fast') || stationId.includes('hub');
+  
+  let baseEnergyDelivered = 800 + (seed * 10);
+  let baseUtilization = 45 + (seed % 40);
+  let baseCarbonSaved = 150 + (seed * 2);
+  
+  // Adjust based on station type
+  if (isHighTraffic) {
+    baseEnergyDelivered *= 1.5;
+    baseUtilization += 15;
+    baseCarbonSaved *= 1.3;
+  }
+  
+  if (isFastCharger) {
+    baseEnergyDelivered *= 1.8;
+    baseUtilization += 20;
+  }
+  
+  if (isEcoStation) {
+    baseCarbonSaved *= 1.6;
+  }
+  
+  // Generate realistic optimal hours based on station pattern
+  const optimalHours = isHighTraffic 
+    ? ['02:30', '14:00'] 
+    : ['01:00', '11:30'];
+  
+  const peakHours = isHighTraffic 
+    ? '07:30 - 09:30, 17:00 - 19:30'
+    : '08:00 - 10:00';
+    
+  const quietHours = isHighTraffic 
+    ? '00:00 - 03:00'
+    : '01:00 - 05:00';
+
   return {
-    optimalHours: ['02:00', '11:00'],
-    energyDelivered: Math.floor(Math.random() * 500 + 1000), // 1000-1500 kWh
-    utilizationRate: Math.floor(Math.random() * 30 + 50), // 50-80%
-    peakHours: '08:00 - 10:00',
-    quietHours: '01:00 - 04:00',
-    carbonSaved: Math.floor(Math.random() * 100 + 200)
+    optimalHours,
+    energyDelivered: Math.floor(baseEnergyDelivered),
+    utilizationRate: Math.min(95, Math.floor(baseUtilization)),
+    peakHours,
+    quietHours,
+    carbonSaved: Math.floor(baseCarbonSaved)
   };
 };

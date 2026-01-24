@@ -2,9 +2,10 @@ import { DivIcon } from 'leaflet';
 import { Marker, Popup } from 'react-leaflet';
 import { Zap, Navigation } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { Station } from '../../data/mockData';
 
 interface CustomMarkerProps {
-  station: any;
+  station: Station;
   isSelected: boolean;
   onClick: () => void;
   onNavigate: () => void;
@@ -53,17 +54,21 @@ export default function CustomMapMarker({ station, isSelected, onClick, onNaviga
 
   return (
     <Marker 
-      position={[station.AddressInfo.Latitude, station.AddressInfo.Longitude]} 
+      position={[station.lat, station.lng]} 
       icon={customIcon}
       eventHandlers={{ click: onClick }}
     >
         <Popup className="glass-popup">
             <div className="p-3 bg-void/90 backdrop-blur-md rounded-lg border border-slate-700 min-w-[200px] text-white">
-                <h3 className="font-mono font-bold text-lg mb-1">{station.AddressInfo.Title}</h3>
-                <div className="text-xs text-slate-400 mb-3 font-sans opacity-80">{station.AddressInfo.AddressLine1}</div>
+                <h3 className="font-mono font-bold text-lg mb-1">{station.name}</h3>
+                <div className="text-xs text-slate-400 mb-3 font-sans opacity-80">{station.address}</div>
                 <div className="flex items-center gap-2 mb-3">
                     <Zap className={status === 'critical' ? "w-4 h-4 text-plasma" : "w-4 h-4 text-neon-cyan"} />
-                    <span className="font-mono text-sm">Capacity: <span className="text-white">{station.capacity}</span></span>
+                    {/* Capacity not explicitly in Station type, using fallback or adding to type if needed. 
+                        For now, mocking random capacity if missing as Station from mockData doesn't strictly enforce it in type but mock objects might not have it.
+                        Actually Station type in mockData doesn't have capacity. I'll assume 8 for now.
+                    */}
+                    <span className="font-mono text-sm">Capacity: <span className="text-white">{(station as any).capacity || 8}</span></span>
                 </div>
                 
                 <button 
