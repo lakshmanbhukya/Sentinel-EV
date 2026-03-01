@@ -7,6 +7,8 @@ export interface Station {
   load: number; // 0-100%
   temp: number; // Celsius
   address: string;
+  totalChargers?: number;
+  availableChargers?: number;
 }
 
 export const STATIONS: Station[] = [
@@ -169,8 +171,10 @@ export const STATIONS: Station[] = [
     lng: -74.0030,
     status: 'safe',
     load: 30,
-    temp: 55,
-    address: '100 Spring St, New York, NY'
+    temp: 55, 
+    address: '100 Spring St, New York, NY',
+    totalChargers: 8,
+    availableChargers: 6
   },
   {
     id: 'st-5',
@@ -180,7 +184,9 @@ export const STATIONS: Station[] = [
     status: 'critical',
     load: 95,
     temp: 112, 
-    address: '50 Hudson St, New York, NY'
+    address: '50 Hudson St, New York, NY',
+    totalChargers: 12,
+    availableChargers: 0
   }
 ];
 

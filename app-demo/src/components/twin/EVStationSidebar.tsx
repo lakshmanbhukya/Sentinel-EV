@@ -12,7 +12,7 @@ import ActionRecommendation from '../analytics/ActionRecommendation';
 import BookingPanel from '../booking/BookingPanel'; 
 import { generateStationMetrics } from '../../data/mockAnalyticsData';
 import { useHourlyDemand, useDemandPrediction } from '../../hooks/useAnalyticsData';
-import { useConditionalAgent } from '../../../../agent/integration/AgentEnabledWrapper';
+import { useConditionalAgent } from '../../agent/integration/AgentEnabledWrapper';
 import { getMetricsByStatus, generateStatusBasedEnergyData, getOperationalDataByStatus } from '../../data/statusBasedMockData';
 import { simulateRecovery } from '../../utils/recoverySimulation';
 

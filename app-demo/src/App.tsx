@@ -4,7 +4,7 @@ import SentinelMap from './components/map/SentinelMap';
 import EVEnergyTwinSidebar from './components/twin/EVStationSidebar';
 import BookingModal from './components/ui/BookingModal';
 import { AnimatePresence } from 'framer-motion';
-import { AgentEnabledWrapper, AgentIntegration, AgentControlPanel } from '../../agent/integration/AgentEnabledWrapper.js';
+import { AgentEnabledWrapper, AgentIntegration, AgentControlPanel } from './agent/integration/AgentEnabledWrapper';
 
 function App() {
   const { view, selectedStation, stations, updateStationStatus } = useDemoStore();

@@ -52,7 +52,7 @@ export function useDemandPrediction(stationId: string) {
                     
                     if (isMounted && peakHoursData && peakHoursData.length > 0) {
                         // Transform backend peak hours to frontend demand curve
-                        const transformedData = transformDemandPrediction(peakHoursData, stationId);
+                        const transformedData = transformDemandPrediction(peakHoursData.map(p => p.hour), stationId);
                         setData(transformedData);
                         setIsMock(false);
                         console.log(`📊 Using ML prediction data for station ${stationId}`);
