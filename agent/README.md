@@ -1,66 +1,56 @@
-# Self-Healing AI Agent
+# Sentinel EV Agent Module (Frontend Simulation)
 
-This module contains the core implementation of the Self-Healing AI Agent system for EV charging stations.
+This module implements the self-healing agent logic used by the Sentinel EV frontend experience.
 
-## Directory Structure
+It is designed for simulation and UI interaction, not as a backend microservice.
 
-```
+## Scope
+
+- Telemetry simulation for EV charging station behavior
+- Fault detection from incoming telemetry snapshots
+- Diagnosis pipeline for probable fault causes
+- Recovery action planning/execution models
+- Agent state lifecycle and terminal-friendly event output
+
+## Frontend-Only Note
+
+This module is part of the frontend project scope. It is consumed by React UI flows and tests. It does not require a standalone backend runtime in this repository.
+
+## Directory Overview
+
+```text
 agent/
-├── types.ts                 # Core TypeScript interfaces and types
-├── telemetrySimulator.ts    # Telemetry data generation and simulation
-├── faultDetector.ts         # Fault detection and analysis
-├── diagnosisEngine.ts       # Root cause diagnosis logic
-├── recoveryActions.ts       # Automated recovery procedures
-├── agentState.ts           # Finite state machine management
-├── index.ts                # Main module exports
-├── tests/                  # Test files
-│   └── setup.test.ts       # Basic setup and integration tests
-└── README.md               # This file
+	types.ts                  # Shared interfaces and enums
+	telemetrySimulator.ts     # Synthetic telemetry generation
+	faultDetector.ts          # Fault detection rules/logic
+	diagnosisEngine.ts        # Fault diagnosis logic
+	recoveryActions.ts        # Recovery action generation/execution results
+	agentState.ts             # Agent finite-state lifecycle helpers
+	AgentController.ts        # Controller abstraction for agent orchestration
+	AgentTerminal.tsx         # Terminal-style UI rendering
+	performanceMonitor.ts     # Runtime/perf tracking helpers
+	securityMonitor.ts        # Safety/security checks for simulation
+	tests/                    # Unit/integration/property tests
 ```
 
-## Core Interfaces
+## How It Is Used
 
-### AgentState
-Represents the current state of an agent instance, including phase, fault information, and logs.
-
-### TelemetryData
-Defines the structure of telemetry data from charging stations, including voltage, current, temperature, and status information.
-
-### FaultEvent
-Represents a detected fault with type, severity, and associated telemetry snapshot.
-
-### DiagnosisResult
-Contains the result of fault diagnosis including root cause, confidence level, and recommended actions.
-
-### RecoveryResult
-Represents the outcome of a recovery action execution.
+- Imported by UI components to visualize monitoring and recovery events.
+- Used by test suites to validate invariants and scenario behavior.
+- Wired into demo flows for end-to-end frontend simulation.
 
 ## Testing
 
-The module uses Vitest and fast-check for comprehensive testing:
+Run tests from the frontend app workspace:
 
-- **Unit Tests**: Specific scenarios and edge cases
-- **Property-Based Tests**: Universal properties validated across random inputs
-
-Run tests with:
 ```bash
-npm test                # Run all tests once
-npm run test:watch      # Run tests in watch mode
-npm run test:ui         # Run tests with UI
+cd app-demo
+npm test
 ```
 
-## Implementation Status
+For watch/UI modes, use:
 
-- ✅ Task 1: Project structure and core interfaces
-- ⏳ Task 2: Telemetry Simulator implementation
-- ⏳ Task 3: Fault Detector implementation
-- ⏳ Task 4: Agent State Manager implementation
-- ⏳ Task 6: Diagnosis Engine implementation
-- ⏳ Task 7: Recovery Actions implementation
-- ⏳ Task 8: Agent Terminal UI implementation
-- ⏳ Task 9: System integration
-- ⏳ Task 10: End-to-end coordination
-- ⏳ Task 11: Demo scenarios
-- ⏳ Task 12: Final integration and polish
-
-Each module currently contains placeholder implementations that will be completed in their respective tasks.
+```bash
+npm run test:watch
+npm run test:ui
+```
