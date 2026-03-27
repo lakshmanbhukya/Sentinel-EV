@@ -89,3 +89,5 @@ agent/                # Standalone agent module mirror used for development/test
 
 - Some files and comments may reference backend/ML plans from earlier iterations.
 - The current runnable implementation in this repository is frontend-focused.
+- CI includes a GitHub Actions workflow at `.github/workflows/ci-discord-success.yml` that posts to Discord after successful pushes to `main`.
+- Add the `DISCORD_WEBHOOK_URL` repository secret to enable notifications.
