@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# Sentinel EV Frontend App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This folder contains the runnable frontend application for Sentinel EV.
 
-Currently, two official plugins are available:
+The app is a browser-based simulation focused on:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Grid-aware EV charging UX
+- Digital twin dashboards and map views
+- Agent terminal and self-healing workflows
+- Local/mock data driven interactions
 
-## React Compiler
+## Frontend-Only Note
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+This app runs as a frontend-only project in its current form.
 
-## Expanding the ESLint configuration
+- Backend and ML services are not required for local demo execution.
+- Data pipelines are simulated through local modules and mock datasets.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Used
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Leaflet + React Leaflet
+- Zustand
+- Recharts
+- Vitest + fast-check
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+
+- npm
+
+## Setup
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Available Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev         # Start dev server
+npm run build       # Type-check and build production assets
+npm run preview     # Preview production build locally
+npm run lint        # Lint source files
+npm test            # Run tests once
+npm run test:watch  # Run tests in watch mode
+npm run test:ui     # Open Vitest UI
 ```
+
+Default dev URL: `http://localhost:5173`
+
+## High-Level Structure
+
+```text
+src/
+  components/       # Feature and shared UI components
+  hooks/            # Data and UI hooks
+  store/            # Zustand stores
+  data/             # City/station mock datasets
+  api/              # Frontend API abstraction and transformers
+  agent/            # Agent simulation logic and terminal UI
+```
+
+## Testing
+
+- Unit and integration tests are powered by Vitest.
+- Property-based scenarios use fast-check.
+
+## Related Docs
+
+- Workspace overview: `../README.md`
+- Agent module details: `src/agent/README.md`
